@@ -1,0 +1,100 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Wrench Wise EmployAI - AI-Powered Employability & Transformation Platform</title>
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+    <!-- Chart.js for beautiful analytics -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- PDF.js and Mammoth.js for client-side resume text extraction -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.4.120/pdf.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/mammoth/1.6.0/mammoth.browser.min.js"></script>
+    <!-- Tesseract.js for client-side image OCR -->
+    <script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+    <!-- Custom Style Sheet -->
+    <link rel="stylesheet" href="css/styles.css?v=3.5.0">
+</head>
+<body class="light-mode-theme">
+    <!-- App Root Container -->
+    <div id="app" class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside id="sidebar" class="app-sidebar hidden">
+            <div class="sidebar-brand" style="justify-content: center; padding: 16px 0;">
+                <img src="assets/logo.png" alt="Wrench Wise EmployAI Logo" style="height: 48px; width: auto; object-fit: contain; max-width: 90%;">
+            </div>
+            <nav class="sidebar-menu">
+                <!-- Dynamic Menu Items will be inserted here -->
+            </nav>
+            <div class="sidebar-footer">
+                <div class="user-profile">
+                    <div class="user-avatar" id="nav-user-avatar">SC</div>
+                    <div class="user-details">
+                        <span class="user-name" id="nav-user-name">Counselor Mode</span>
+                        <span class="user-role" id="nav-user-role">Sales Counselor</span>
+                    </div>
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Workspace Area -->
+        <main id="main-content" class="app-main">
+            <!-- Top bar -->
+            <header class="app-header hidden">
+                <div class="header-left" style="display: flex; align-items: center;">
+                    <button id="sidebar-toggle" class="sidebar-toggle-btn" style="display: none;">
+                        <i data-lucide="menu"></i>
+                    </button>
+                    <!-- Brand info with Logo left of name -->
+                    <div class="header-brand" style="display: flex; align-items: center; gap: 8px; margin-right: 20px;">
+                        <img src="assets/logo.png" alt="Wrench Wise EmployAI Logo" style="height: 40px; width: auto; object-fit: contain;">
+                    </div>
+                    <h1 id="page-title" class="page-title" style="font-size: 1.2rem; border-left: 1px solid var(--border-color); padding-left: 20px;">Dashboard</h1>
+                </div>
+                <div class="header-right">
+                    <div class="role-badge" id="role-badge">Counselor</div>
+                    <button id="btn-auth-toggle" class="btn-logout" title="Log Out" style="background: none; border: none; color: var(--text-light); cursor: pointer; display: flex; align-items: center; gap: 4px; padding: 6px 12px; border-radius: 6px; font-weight: 500; font-size: 0.9rem;">
+                        <i data-lucide="log-out" style="width: 18px; height: 18px;"></i>
+                        <span>Logout</span>
+                    </button>
+                </div>
+            </header>
+
+            <!-- Dynamic Page Content -->
+            <div id="page-content" class="page-content">
+                <!-- Rendered views go here -->
+            </div>
+        </main>
+    </div>
+
+    <!-- Hidden Printable Report Wrapper -->
+    <div id="print-report" class="print-report-container">
+        <!-- Printable report details rendered dynamically on request -->
+    </div>
+
+    <!-- Hidden SVG Gradients for Score Gauges -->
+    <svg width="0" height="0" style="position: absolute;">
+        <defs>
+            <linearGradient id="scoreGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#00a896" />
+                <stop offset="100%" stop-color="#028090" />
+            </linearGradient>
+            <linearGradient id="futureGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+                <stop offset="0%" stop-color="#10b981" />
+                <stop offset="100%" stop-color="#059669" />
+            </linearGradient>
+        </defs>
+    </svg>
+
+
+    <!-- Notification Toast -->
+    <div id="toast-container" class="toast-container"></div>
+
+    <!-- Scripts -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+    <script type="module" src="js/app.js?v=4.6"></script>
+</body>
+</html>

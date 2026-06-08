@@ -1,0 +1,16 @@
+{
+  "name": "wrenchwise-employai",
+  "version": "1.0.0",
+  "description": "AI-Powered Employability Assessment & Career Transformation Platform",
+  "type": "module",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "npx http-server -c-1 -p 3000",
+    "build": "echo 'No build step required'"
+  },
+  "dependencies": {
+    "dotenv": "^17.4.2",
+    "express": "^5.2.1",
+    "serve": "^14.2.4"
+  }
+}

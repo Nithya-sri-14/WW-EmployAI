@@ -1,0 +1,201 @@
+{
+  "weights": {
+    "projects": 25,
+    "skills": 25,
+    "portfolio": 10,
+    "experience": 10,
+    "certifications": 10,
+    "ats": 20
+  },
+  "benchmarks": null,
+  "programs": null,
+  "counselors": [
+    {
+      "id": "sc_1780558167500",
+      "name": "Nithya sri A",
+      "email": "nithyasria10a@gmail.com",
+      "password": "WW-ms07of",
+      "active": true,
+      "assessmentsCount": 0,
+      "enrollmentsCount": 0
+    }
+  ],
+  "leads": [
+    {
+      "id": "lead_001",
+      "name": "Aditya Roy",
+      "email": "adityaroy@gmail.com",
+      "program": "aiml",
+      "scoreBefore": 38,
+      "scoreAfter": 82,
+      "status": "Enrolled",
+      "counselorId": "sc_01",
+      "date": "2026-05-02"
+    },
+    {
+      "id": "lead_002",
+      "name": "Ananya Sen",
+      "email": "ananya.sen@gmail.com",
+      "program": "fullstack",
+      "scoreBefore": 51,
+      "scoreAfter": 88,
+      "status": "Enrolled",
+      "counselorId": "sc_01",
+      "date": "2026-05-05"
+    },
+    {
+      "id": "lead_003",
+      "name": "Karan Johar",
+      "email": "karan.j@gmail.com",
+      "program": "aiml",
+      "scoreBefore": 28,
+      "scoreAfter": 80,
+      "status": "Interested",
+      "counselorId": "sc_02",
+      "date": "2026-05-08"
+    },
+    {
+      "id": "lead_004",
+      "name": "Deepika P",
+      "email": "deepika.p@yahoo.com",
+      "program": "fullstack",
+      "scoreBefore": 42,
+      "scoreAfter": 86,
+      "status": "Highly Interested",
+      "counselorId": "sc_02",
+      "date": "2026-05-12"
+    },
+    {
+      "id": "lead_005",
+      "name": "Ranbir Kapoor",
+      "email": "ranbir.k@gmail.com",
+      "program": "aiml",
+      "scoreBefore": 47,
+      "scoreAfter": 83,
+      "status": "Needs Follow-Up",
+      "counselorId": "sc_03",
+      "date": "2026-05-15"
+    },
+    {
+      "id": "lead_006",
+      "name": "Alia Bhatt",
+      "email": "alia.b@outlook.com",
+      "program": "fullstack",
+      "scoreBefore": 30,
+      "scoreAfter": 84,
+      "status": "Enrolled",
+      "counselorId": "sc_02",
+      "date": "2026-05-18"
+    },
+    {
+      "id": "lead_007",
+      "name": "Varun Dhawan",
+      "email": "varun.d@gmail.com",
+      "program": "aiml",
+      "scoreBefore": 34,
+      "scoreAfter": 81,
+      "status": "Not Interested",
+      "counselorId": "sc_03",
+      "date": "2026-05-20"
+    },
+    {
+      "id": "lead_008",
+      "name": "Siddharth M",
+      "email": "sid.m@outlook.com",
+      "program": "fullstack",
+      "scoreBefore": 49,
+      "scoreAfter": 87,
+      "status": "Enrolled",
+      "counselorId": "sc_01",
+      "date": "2026-05-22"
+    },
+    {
+      "id": "lead_009",
+      "name": "Kiara Advani",
+      "email": "kiara.a@gmail.com",
+      "program": "aiml",
+      "scoreBefore": 40,
+      "scoreAfter": 82,
+      "status": "Highly Interested",
+      "counselorId": "sc_01",
+      "date": "2026-05-25"
+    },
+    {
+      "id": "lead_010",
+      "name": "Vicky Kaushal",
+      "email": "vicky.k@gmail.com",
+      "program": "fullstack",
+      "scoreBefore": 54,
+      "scoreAfter": 89,
+      "status": "Enrolled",
+      "counselorId": "sc_02",
+      "date": "2026-05-26"
+    },
+    {
+      "id": "lead_011",
+      "name": "Katrina Kaif",
+      "email": "katrina.k@yahoo.com",
+      "program": "aiml",
+      "scoreBefore": 32,
+      "scoreAfter": 81,
+      "status": "Needs Follow-Up",
+      "counselorId": "sc_03",
+      "date": "2026-05-28"
+    },
+    {
+      "id": "lead_012",
+      "name": "Sara Ali",
+      "email": "sara.ali@gmail.com",
+      "program": "fullstack",
+      "scoreBefore": 46,
+      "scoreAfter": 85,
+      "status": "Enrolled",
+      "counselorId": "sc_01",
+      "date": "2026-05-29"
+    },
+    {
+      "id": "lead_013",
+      "name": "Janhvi Kapoor",
+      "email": "janhvi.k@gmail.com",
+      "program": "aiml",
+      "scoreBefore": 39,
+      "scoreAfter": 83,
+      "status": "Interested",
+      "counselorId": "sc_02",
+      "date": "2026-05-30"
+    },
+    {
+      "id": "lead_014",
+      "name": "Ishaan Khatter",
+      "email": "ishaan.k@gmail.com",
+      "program": "fullstack",
+      "scoreBefore": 36,
+      "scoreAfter": 84,
+      "status": "Enrolled",
+      "counselorId": "sc_03",
+      "date": "2026-05-31"
+    },
+    {
+      "id": "lead_1780567795549",
+      "name": "Nithya Sri A",
+      "email": "nithyasria10a@gmail.com",
+      "program": "aiml",
+      "scoreBefore": 83,
+      "scoreAfter": 100,
+      "status": "Interested",
+      "counselorId": "sc_01",
+      "date": "2026-06-04"
+    },
+    {
+      "id": "lead_1780567880127",
+      "name": "Suganya R",
+      "email": "suganya3ramu@gmail.comLinkedIn",
+      "program": "fullstack",
+      "scoreBefore": 62,
+      "scoreAfter": 97,
+      "status": "Interested",
+      "counselorId": "sc_01",
+      "date": "2026-06-04"
+    }
+  ]
+}
