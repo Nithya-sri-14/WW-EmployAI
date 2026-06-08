@@ -2,7 +2,7 @@
    Wrench Wise EmployAI Login View
    ========================================================================== */
 
-import { getStorageItem, setStorageItem, showToast } from '../utils.js?v=2.1';
+import { getStorageItem, setStorageItem, showToast } from '../utils.js?v=2.2';
 
 /**
  * Renders the login card structure into the target container.
