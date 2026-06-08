@@ -86,7 +86,47 @@ function sanitizeParsedProfile(parsed, fileName) {
     }
     
     let skills = Array.isArray(parsed.skills) ? parsed.skills.filter(Boolean).map(s => s.trim()) : [];
-    let projects = Array.isArray(parsed.projects) ? parsed.projects : [];
+    
+    // Clean and filter projects to prevent contact/social links mapping as projects
+    let projects = [];
+    if (Array.isArray(parsed.projects)) {
+        projects = parsed.projects.filter(p => {
+            if (!p || typeof p !== 'object') return false;
+            const title = (p.title || "").trim();
+            const lowerTitle = title.toLowerCase();
+            const url = (p.url || "").trim().toLowerCase();
+            
+            // Blacklist for project titles that are actually email/phone/social profiles/contact info
+            if (lowerTitle.includes("mailto:") || 
+                lowerTitle.includes("tel:") || 
+                lowerTitle.includes("linkedin.com") || 
+                lowerTitle.includes("github.com") || 
+                lowerTitle.includes("hackerrank.com") || 
+                lowerTitle.includes("leetcode.com") ||
+                lowerTitle.includes("@") ||
+                /^\+?[0-9\s\-()]+$/.test(title) || // matches raw phone number format
+                url.includes("mailto:") ||
+                url.includes("tel:") ||
+                lowerTitle === "phone" ||
+                lowerTitle === "email" ||
+                lowerTitle === "linkedin" ||
+                lowerTitle === "github" ||
+                lowerTitle === "hackerrank" ||
+                lowerTitle === "leetcode"
+            ) {
+                return false;
+            }
+            
+            // Sanitize valid project fields
+            p.title = title;
+            p.desc = (p.desc || "").trim();
+            p.tech = (p.tech || "").trim();
+            p.url = (p.url || "").trim();
+            
+            return !!title;
+        });
+    }
+
     let experience = Array.isArray(parsed.experience) ? parsed.experience : [];
     let phone = (parsed.phone || "").trim();
     
