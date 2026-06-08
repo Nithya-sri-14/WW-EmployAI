@@ -97,7 +97,7 @@ export function renderLoginView(container, onLoginSuccess) {
                     <div style="position: absolute; top: 0; left: 0; right: 0; height: 4px; background: linear-gradient(90deg, var(--primary), var(--secondary));"></div>
                     
                     <div class="login-header" style="text-align: center; margin-bottom: 32px;">
-                        <img src="assets/logo.png" alt="Wrench Wise EmployAI" style="width: 100%; max-width: 260px; height: auto; margin: 0 auto 20px auto; display: block;">
+                        <img src="/assets/logo.png" alt="Wrench Wise EmployAI" style="width: 100%; max-width: 260px; height: auto; margin: 0 auto 20px auto; display: block;">
                         ${title ? `<h2 style="font-size: 1.5rem; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">${title}</h2>` : ''}
                         <p style="color: var(--text-muted); font-size: 0.95rem; line-height: 1.5;">${subtitle}</p>
                     </div>
