@@ -12,17 +12,26 @@ Mission: Extract the candidate's profile into the highly structured JSON schema 
 Rules:
 1. Document Intelligence: Read the attached document deeply.
 2. Identity: Extract Name, Email, Phone, Location, LinkedIn, GitHub, Portfolio.
-- LINKEDIN RULE: Must be a valid linkedin.com URL (e.g. https://linkedin.com/in/username). Do not extract search queries or random text.
-- GITHUB RULE: Must be a valid github.com URL (e.g. https://github.com/username). Do not extract random text.
+- EMAIL RULE: Extract the email address cleanly. Absolutely remove any trailing words, symbols, or labels (such as 'LinkedIn', 'GitHub', 'Phone', etc.) that might be adjacent to it in the text. For example, 'suganya3ramu@gmail.comLinkedIn' must be parsed simply as 'suganya3ramu@gmail.com'.
+- LINKEDIN RULE: Must be a valid linkedin.com URL (e.g. https://linkedin.com/in/username). Do not extract search queries or random text. Clean it up to be a direct URL.
+- GITHUB RULE: Must be a valid github.com URL (e.g. https://github.com/username). Do not extract random text. Clean it up to be a direct URL.
+- PORTFOLIO RULE: Extract a personal portfolio website or blog if present. Do not map GitHub or LinkedIn here.
 CRITICAL NAME RULES FOR candidate_name:
 - STEP 1: Search ONLY within the top section, header, first 20 lines, or area near contact info. Ignore the rest of the resume for the name.
 - STEP 2: ELIMINATE INVALID CANDIDATES. NEVER return numbers, emails, URLs, file names, resume titles, job titles, skills, company names, educations, certifications, technologies, addresses, social handles, or symbols (@/\\_#%$|:;=). Reject ALL CAPS skill titles (e.g. DATA SCIENCE, SOFTWARE ENGINEER, JAVA DEVELOPER).
 - STEP 3: VALIDATE NAME. A valid person name usually appears alone, contains 2-5 words, is primarily alphabetic, and may contain initials/hyphens/apostrophes/middle names.
 - STEP 4: SCORING. Highest priority: Large header text, near phone/email, before work experience/skills. Lower priority: References, signatures, footers. You MUST do everything computationally possible to find the true candidate name. Never return null unless the document contains absolutely no names.
 3. Education Intelligence: Extract Degree, Specialization, complete Institution Name, Graduation Year, CGPA/Percentage. Do not truncate names.
-4. Experience & Internships: Deeply analyze the experience section. You MUST flag 'is_internship' as true if the title, company, or description contains the terms 'Intern', 'Internship', 'Trainee', 'Industrial Training', 'Apprentice', or 'Co-op'. Populate both the 'experience' array (with 'is_internship' flag) and the 'internships' string array.
+4. Experience & Internships: Deeply analyze the experience section.
+- You MUST flag 'is_internship' as true if the title, company, or description contains the terms 'Intern', 'Internship', 'Trainee', 'Industrial Training', 'Apprentice', or 'Co-op'.
+- DURATION CALCULATION RULE: Calculate 'duration_months' as the total months of that experience block. 
+  * CRITICAL REFERENCE DATE: The current date is June 2026. Use this to resolve end dates like 'Present' or 'Current' (e.g. 'Jan 2025 - Present' = 17 months, 'June 2024 - Present' = 24 months).
+  * For other ranges, compute mathematically (e.g. 'July 2023 - April 2024' = 10 months, '2022 - 2023' = 12 months, '2021 - 2024' = 36 months).
+  * If only years are given without months, assume 12 months per year of difference.
+  * Store this calculated integer in 'duration_months'.
+- Populate both the 'experience' array (with 'is_internship' flag and 'duration_months') and the 'internships' string array.
 5. Projects: Identify Title, Description, Tech Stack, URLs. 
-6. Certifications: Detect Provider and Title.
+6. Certifications: Detect Provider, Title, and Date.
 7. Skills Ontology: Standardize and categorize all programming languages, frameworks, DBs, Cloud, DevOps, AI/ML skills into an array.
 8. Confidence: For every field extracted, calculate a confidence score (0-100) based on how clearly it was stated in the resume. Store these in the confidence_scores object.
 9. Completeness: Calculate a resume_completeness percentage (0-100) based on how many core fields (identity, education, experience, skills) were successfully extracted.
@@ -36,13 +45,15 @@ Your mission is to perform a Second Verification Pass.
 Tasks:
 1. Validate every single extracted field against the raw document.
 2. Remove ANY hallucinations or fabricated data.
-3. CRITICAL IDENTITY CHECK: Verify that candidate_name is a real human name. It MUST NOT contain numbers, technical terms, skills, languages, job titles, verbs, or file extensions. It must strictly be the resume owner's personal name found near the contact info. If the name is blank, you MUST aggressively scan the document to find the candidate's real name.
-4. Check project counts and certification counts.
-5. Correct wrong mappings (e.g. if an experience was mapped as a project).
-6. Ensure the structure perfectly matches the strict JSON schema.
-7. Re-calculate confidence scores based on your verification.
-8. Add any warnings to the warnings array if data looks suspicious or unclear.
-9. Return the finalized JSON.`;
+3. CRITICAL EMAIL CLEANING: Ensure the email address does not have trailing concatenated text like 'LinkedIn' or 'GitHub'. Clean it to end in a valid TLD (like .com, .in, .org).
+4. CRITICAL IDENTITY CHECK: Verify that candidate_name is a real human name. It MUST NOT contain numbers, technical terms, skills, languages, job titles, verbs, or file extensions. It must strictly be the resume owner's personal name found near the contact info. If the name is blank, you MUST aggressively scan the document to find the candidate's real name.
+5. Check experience duration_months calculations. Recalculate if they are mathematically wrong (assuming today is June 2026).
+6. Check project counts and certification counts.
+7. Correct wrong mappings (e.g. if an experience was mapped as a project).
+8. Ensure the structure perfectly matches the strict JSON schema.
+9. Re-calculate confidence scores based on your verification.
+10. Add any warnings to the warnings array if data looks suspicious or unclear.
+11. Return the finalized JSON.`;
 
     // Define the massive 15-layer JSON Schema
     const responseSchema = {
@@ -76,6 +87,7 @@ Tasks:
                         title: { type: "STRING", nullable: true },
                         company: { type: "STRING", nullable: true },
                         duration: { type: "STRING", nullable: true },
+                        duration_months: { type: "NUMBER", nullable: true },
                         desc: { type: "STRING", nullable: true },
                         is_internship: { type: "BOOLEAN", nullable: true }
                     }
@@ -145,14 +157,17 @@ Tasks:
         };
     }
 
+    const parts = [documentPart];
+    if (filePayload.extractedText) {
+        parts.push({ text: `Here is the OCR/raw text extracted from the document to help you copy details (like names, emails, URLs) exactly:\n${filePayload.extractedText}` });
+    }
+    parts.push({ text: promptExtraction });
+
     const extractionPayload = {
         contents: [
             {
                 role: "user",
-                parts: [
-                    documentPart,
-                    { text: promptExtraction }
-                ]
+                parts: parts
             }
         ],
         generationConfig: {
@@ -181,15 +196,18 @@ Tasks:
         
         // PASS 2: Verification
         console.log("Gemini Pass 2: Verifying Profile against Document...");
+        const verificationParts = [documentPart];
+        if (filePayload.extractedText) {
+            verificationParts.push({ text: `Here is the OCR/raw text extracted from the document:\n${filePayload.extractedText}` });
+        }
+        verificationParts.push({ text: promptVerification });
+        verificationParts.push({ text: `Here is the extracted JSON from Pass 1 to verify:\n${extractedJSONString}` });
+
         const verificationPayload = {
             contents: [
                 {
                     role: "user",
-                    parts: [
-                        documentPart,
-                        { text: promptVerification },
-                        { text: `Here is the extracted JSON from Pass 1 to verify:\n${extractedJSONString}` }
-                    ]
+                    parts: verificationParts
                 }
             ],
             generationConfig: {

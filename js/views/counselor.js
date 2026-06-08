@@ -241,6 +241,28 @@ function renderSnapshotStep(container) {
                     </div>
                 </div>
 
+                <!-- Work Experience & Internships Editor -->
+                <div style="margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 24px;">
+                    <label class="form-label" style="font-weight:700; font-size:1.1rem; color:var(--text-main); margin-bottom:12px; display:block;">Work Experience & Internships</label>
+                    <div id="experience-list-container" style="display:flex; flex-direction:column; gap:16px; margin-bottom:16px;">
+                        <!-- Rendered dynamically -->
+                    </div>
+                    <button type="button" class="btn btn-secondary" id="btn-add-experience-item" style="padding: 8px 16px; font-size:0.85rem; display:flex; align-items:center; gap:6px;">
+                        <i data-lucide="plus" style="width:16px; height:16px;"></i>Add Experience Block
+                    </button>
+                </div>
+
+                <!-- Projects Editor -->
+                <div style="margin-top: 24px; border-top: 1px solid var(--border-color); padding-top: 24px; margin-bottom: 24px;">
+                    <label class="form-label" style="font-weight:700; font-size:1.1rem; color:var(--text-main); margin-bottom:12px; display:block;">Curriculum & Personal Projects</label>
+                    <div id="projects-list-container" style="display:flex; flex-direction:column; gap:16px; margin-bottom:16px;">
+                        <!-- Rendered dynamically -->
+                    </div>
+                    <button type="button" class="btn btn-secondary" id="btn-add-project-item" style="padding: 8px 16px; font-size:0.85rem; display:flex; align-items:center; gap:6px;">
+                        <i data-lucide="plus" style="width:16px; height:16px;"></i>Add Project Block
+                    </button>
+                </div>
+
                 <!-- Program Selection Section -->
                 <div class="program-selection-container" style="border-top:1px solid var(--border-color); padding-top:24px; margin-top: 24px; width:100%;">
                     <h3 style="align-self: flex-start; margin-bottom: 16px; font-family: var(--font-heading);">Select Candidate Career Program Path</h3>
@@ -350,6 +372,234 @@ function renderSnapshotStep(container) {
         }
     });
 
+    // Save / Sync lists functions
+    const saveExpFromUI = () => {
+        const titles = document.querySelectorAll('.exp-title');
+        const companies = document.querySelectorAll('.exp-company');
+        const durations = document.querySelectorAll('.exp-duration');
+        const months = document.querySelectorAll('.exp-months');
+        const descs = document.querySelectorAll('.exp-desc');
+        const internships = document.querySelectorAll('.exp-internship');
+        
+        titles.forEach(input => {
+            const idx = parseInt(input.getAttribute('data-idx'));
+            if (activeCandidate.experience[idx]) {
+                activeCandidate.experience[idx].title = input.value;
+            }
+        });
+        companies.forEach(input => {
+            const idx = parseInt(input.getAttribute('data-idx'));
+            if (activeCandidate.experience[idx]) {
+                activeCandidate.experience[idx].company = input.value;
+            }
+        });
+        durations.forEach(input => {
+            const idx = parseInt(input.getAttribute('data-idx'));
+            if (activeCandidate.experience[idx]) {
+                activeCandidate.experience[idx].duration = input.value;
+            }
+        });
+        months.forEach(input => {
+            const idx = parseInt(input.getAttribute('data-idx'));
+            if (activeCandidate.experience[idx]) {
+                activeCandidate.experience[idx].duration_months = parseInt(input.value) || 0;
+            }
+        });
+        descs.forEach(textarea => {
+            const idx = parseInt(textarea.getAttribute('data-idx'));
+            if (activeCandidate.experience[idx]) {
+                activeCandidate.experience[idx].desc = textarea.value;
+            }
+        });
+        internships.forEach(checkbox => {
+            const idx = parseInt(checkbox.getAttribute('data-idx'));
+            if (activeCandidate.experience[idx]) {
+                activeCandidate.experience[idx].is_internship = checkbox.checked;
+            }
+        });
+    };
+
+    const saveProjFromUI = () => {
+        const titles = document.querySelectorAll('.proj-title');
+        const techs = document.querySelectorAll('.proj-tech');
+        const urls = document.querySelectorAll('.proj-url');
+        const descs = document.querySelectorAll('.proj-desc');
+        
+        titles.forEach(input => {
+            const idx = parseInt(input.getAttribute('data-idx'));
+            if (activeCandidate.projects[idx]) {
+                activeCandidate.projects[idx].title = input.value;
+            }
+        });
+        techs.forEach(input => {
+            const idx = parseInt(input.getAttribute('data-idx'));
+            if (activeCandidate.projects[idx]) {
+                activeCandidate.projects[idx].tech = input.value;
+            }
+        });
+        urls.forEach(input => {
+            const idx = parseInt(input.getAttribute('data-idx'));
+            if (activeCandidate.projects[idx]) {
+                activeCandidate.projects[idx].url = input.value;
+            }
+        });
+        descs.forEach(textarea => {
+            const idx = parseInt(textarea.getAttribute('data-idx'));
+            if (activeCandidate.projects[idx]) {
+                activeCandidate.projects[idx].desc = textarea.value;
+            }
+        });
+    };
+
+    const renderExperiences = () => {
+        const container = document.getElementById('experience-list-container');
+        if (!container) return;
+        container.innerHTML = '';
+        if ((activeCandidate.experience || []).length === 0) {
+            container.innerHTML = `<p style="color:var(--text-muted); font-size:0.9rem; margin:0; padding:12px; border:1px dashed var(--border-color); border-radius:6px; text-align:center;">No experience blocks parsed. Click below to add.</p>`;
+            return;
+        }
+        activeCandidate.experience.forEach((exp, idx) => {
+            const card = document.createElement('div');
+            card.className = 'glass-card';
+            card.style.padding = '16px';
+            card.style.position = 'relative';
+            card.style.border = '1px solid var(--border-color)';
+            card.style.background = 'rgba(255,255,255,0.02)';
+            card.style.borderRadius = '8px';
+            card.style.marginBottom = '12px';
+            card.innerHTML = `
+                <button type="button" class="btn-delete-exp" data-idx="${idx}" style="position:absolute; right:16px; top:16px; background:none; border:none; color:var(--accent-red); cursor:pointer;">
+                    <i data-lucide="trash-2" style="width:18px; height:18px;"></i>
+                </button>
+                <div class="form-row" style="margin-bottom:12px; display:flex; gap:16px;">
+                    <div class="form-group" style="margin-bottom:0; flex:1;">
+                        <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Job Title</label>
+                        <input type="text" class="form-input exp-title" data-idx="${idx}" value="${exp.title || ''}" placeholder="e.g. Software Engineer" style="padding-left:12px; font-size:0.85rem; height:36px;">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0; flex:1;">
+                        <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Company</label>
+                        <input type="text" class="form-input exp-company" data-idx="${idx}" value="${exp.company || ''}" placeholder="e.g. Acme Corp" style="padding-left:12px; font-size:0.85rem; height:36px;">
+                    </div>
+                </div>
+                <div class="form-row" style="margin-bottom:12px; display:flex; gap:16px; align-items:center;">
+                    <div class="form-group" style="margin-bottom:0; flex:2;">
+                        <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Duration Text</label>
+                        <input type="text" class="form-input exp-duration" data-idx="${idx}" value="${exp.duration || ''}" placeholder="e.g. Jan 2024 - Present" style="padding-left:12px; font-size:0.85rem; height:36px;">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0; flex:1;">
+                        <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Duration (Months)</label>
+                        <input type="number" class="form-input exp-months" data-idx="${idx}" value="${exp.duration_months !== undefined ? exp.duration_months : 6}" style="padding-left:12px; font-size:0.85rem; height:36px;">
+                    </div>
+                    <div class="form-group" style="flex-direction:row; align-items:center; gap:8px; margin-bottom:0; flex:1; justify-content:flex-end; padding-top:20px; display:flex;">
+                        <input type="checkbox" class="exp-internship" data-idx="${idx}" id="exp-intern-${idx}" ${exp.is_internship ? 'checked' : ''} style="width:16px; height:16px; cursor:pointer; accent-color:var(--primary-light);">
+                        <label class="form-label" for="exp-intern-${idx}" style="margin-bottom:0; cursor:pointer; font-size:0.85rem;">Internship</label>
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Description</label>
+                    <textarea class="form-input exp-desc" data-idx="${idx}" style="padding:8px 12px; font-size:0.85rem; height:60px; resize:vertical; line-height:1.4;" placeholder="Describe responsibilities and tech stack...">${exp.desc || ''}</textarea>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+        
+        container.querySelectorAll('.btn-delete-exp').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const idx = parseInt(btn.getAttribute('data-idx'));
+                saveExpFromUI();
+                activeCandidate.experience.splice(idx, 1);
+                renderExperiences();
+            });
+        });
+        if (window.lucide) window.lucide.createIcons();
+    };
+
+    const renderProjects = () => {
+        const container = document.getElementById('projects-list-container');
+        if (!container) return;
+        container.innerHTML = '';
+        if ((activeCandidate.projects || []).length === 0) {
+            container.innerHTML = `<p style="color:var(--text-muted); font-size:0.9rem; margin:0; padding:12px; border:1px dashed var(--border-color); border-radius:6px; text-align:center;">No projects parsed. Click below to add.</p>`;
+            return;
+        }
+        activeCandidate.projects.forEach((proj, idx) => {
+            const card = document.createElement('div');
+            card.className = 'glass-card';
+            card.style.padding = '16px';
+            card.style.position = 'relative';
+            card.style.border = '1px solid var(--border-color)';
+            card.style.background = 'rgba(255,255,255,0.02)';
+            card.style.borderRadius = '8px';
+            card.style.marginBottom = '12px';
+            card.innerHTML = `
+                <button type="button" class="btn-delete-proj" data-idx="${idx}" style="position:absolute; right:16px; top:16px; background:none; border:none; color:var(--accent-red); cursor:pointer;">
+                    <i data-lucide="trash-2" style="width:18px; height:18px;"></i>
+                </button>
+                <div class="form-row" style="margin-bottom:12px; display:flex; gap:16px;">
+                    <div class="form-group" style="margin-bottom:0; flex:1;">
+                        <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Project Title</label>
+                        <input type="text" class="form-input proj-title" data-idx="${idx}" value="${proj.title || ''}" placeholder="e.g. E-Commerce Website" style="padding-left:12px; font-size:0.85rem; height:36px;">
+                    </div>
+                    <div class="form-group" style="margin-bottom:0; flex:1;">
+                        <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Tech Stack (comma separated)</label>
+                        <input type="text" class="form-input proj-tech" data-idx="${idx}" value="${proj.tech || ''}" placeholder="e.g. React, Node.js, MongoDB" style="padding-left:12px; font-size:0.85rem; height:36px;">
+                    </div>
+                </div>
+                <div class="form-row" style="margin-bottom:12px;">
+                    <div class="form-group" style="margin-bottom:0; flex:1;">
+                        <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Project URL</label>
+                        <input type="text" class="form-input proj-url" data-idx="${idx}" value="${proj.url || ''}" placeholder="e.g. https://github.com/..." style="padding-left:12px; font-size:0.85rem; height:36px;">
+                    </div>
+                </div>
+                <div class="form-group" style="margin-bottom:0;">
+                    <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Description</label>
+                    <textarea class="form-input proj-desc" data-idx="${idx}" style="padding:8px 12px; font-size:0.85rem; height:60px; resize:vertical; line-height:1.4;" placeholder="Describe the project features...">${proj.desc || ''}</textarea>
+                </div>
+            `;
+            container.appendChild(card);
+        });
+        
+        container.querySelectorAll('.btn-delete-proj').forEach(btn => {
+            btn.addEventListener('click', () => {
+                const idx = parseInt(btn.getAttribute('data-idx'));
+                saveProjFromUI();
+                activeCandidate.projects.splice(idx, 1);
+                renderProjects();
+            });
+        });
+        if (window.lucide) window.lucide.createIcons();
+    };
+
+    // Render initial lists
+    renderExperiences();
+    renderProjects();
+
+    // Bind item additions
+    document.getElementById('btn-add-experience-item').addEventListener('click', () => {
+        saveExpFromUI();
+        activeCandidate.experience.push({
+            title: '',
+            company: '',
+            duration: '',
+            duration_months: 6,
+            desc: '',
+            is_internship: false
+        });
+        renderExperiences();
+    });
+
+    document.getElementById('btn-add-project-item').addEventListener('click', () => {
+        saveProjFromUI();
+        activeCandidate.projects.push({
+            title: '',
+            desc: '',
+            tech: '',
+            url: ''
+        });
+        renderProjects();
+    });
+
     // Program selection bindings
     const allPrograms = getStorageItem('wrenchwise_programs', []);
     // Hide disabled or incomplete programs (missing skills, projects, or certs) to prevent hallucinations
@@ -402,6 +652,10 @@ function renderSnapshotStep(container) {
 
     // Submit button bindings
     document.getElementById('btn-run-analysis').addEventListener('click', () => {
+        // Collect edited list values first
+        saveExpFromUI();
+        saveProjFromUI();
+
         // Collect edited values
         activeCandidate.name = document.getElementById('edit-name').value;
         activeCandidate.email = document.getElementById('edit-email').value;

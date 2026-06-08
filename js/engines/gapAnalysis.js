@@ -2,6 +2,8 @@
    Wrench Wise EmployAI Skill Gap Analysis Engine
    ========================================================================== */
 
+import { isFuzzyMatch } from './scoring.js';
+
 /**
  * Compares candidate's profile against program requirements to compute specific gaps.
  * @param {Object} candidate - Parsed candidate profile
@@ -10,28 +12,36 @@
  * @returns {Object} Gaps object containing lists of missing items
  */
 export function analyzeGaps(candidate, program, benchmark) {
-    const candSkills = (candidate.skills || []).map(s => String(s).toLowerCase());
+    const candSkills = (candidate.skills || []).filter(Boolean);
     const progSkills = (program && program.skills) || [];
     
     // 1. Missing Skills
     const missingSkills = progSkills.filter(skill => {
-        return !candSkills.some(cs => cs === skill.toLowerCase() || cs.includes(skill.toLowerCase()));
+        return !candSkills.some(cs => isFuzzyMatch(cs, skill));
     });
 
     // 2. Missing Projects
-    const candProjects = (candidate.projects || []).map(p => p && p.title ? String(p.title).toLowerCase() : "");
+    const candProjects = (candidate.projects || []).map(p => p && p.title ? String(p.title) : "").filter(Boolean);
     const progProjects = (program && program.projects) || [];
     
     const missingProjects = progProjects.filter(proj => {
-        return !candProjects.some(cp => cp.includes(proj.toLowerCase()) || proj.toLowerCase().includes(cp));
+        return !candProjects.some(cp => {
+            const c = cp.toLowerCase();
+            const p = proj.toLowerCase();
+            return c.includes(p) || p.includes(c);
+        });
     });
 
     // 3. Missing Certifications
-    const candCerts = (candidate.certifications || []).map(c => String(c).toLowerCase());
+    const candCerts = (candidate.certifications || []).map(c => String(c)).filter(Boolean);
     const progCerts = (program && program.certifications) || [];
     
     const missingCertifications = progCerts.filter(cert => {
-        return !candCerts.some(cc => cc.includes(cert.toLowerCase()) || cert.toLowerCase().includes(cc));
+        return !candCerts.some(cc => {
+            const c = cc.toLowerCase();
+            const p = cert.toLowerCase();
+            return c.includes(p) || p.includes(c);
+        });
     });
 
     // 4. Missing Portfolio Assets
@@ -46,7 +56,7 @@ export function analyzeGaps(candidate, program, benchmark) {
     // 5. Missing Industry Tools
     const toolsToCheck = (program && program.essentialTools) || ["Git", "GitHub"];
     const missingTools = toolsToCheck.filter(tool => {
-        return !candSkills.some(cs => cs.includes(tool.toLowerCase()));
+        return !candSkills.some(cs => isFuzzyMatch(cs, tool));
     });
 
     return {

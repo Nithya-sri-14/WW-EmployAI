@@ -26,14 +26,18 @@ const SKILL_DICTIONARY = [
 ];
 
 function sanitizeParsedProfile(parsed, fileName) {
-    let name = parsed.name || "";
+    let name = parsed.name || parsed.candidate_name || "";
     if (!name || name.toLowerCase().includes("resume") || name.toLowerCase().includes("cv")) {
         name = "";
     }
     // Strip any numbers out of the name
     name = name.replace(/\d+/g, '').trim();
+    
+    // Clean email cleanly, extracting only valid email block
     let email = (parsed.email || "").trim();
-    if (email && !/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/.test(email)) email = "";
+    const emailMatch = email.match(/[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}/);
+    email = emailMatch ? emailMatch[0].trim() : "";
+    
     let linkedin = (parsed.linkedin || "").trim();
     const liMatch = linkedin.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/(?:in\/|pub\/|profile\/)?([a-zA-Z0-9_.-]+)/i);
     linkedin = liMatch ? 'https://www.linkedin.com/in/' + liMatch[1].replace(/\/$/, '') : "";
@@ -41,14 +45,36 @@ function sanitizeParsedProfile(parsed, fileName) {
     let github = (parsed.github || "").trim();
     const ghMatch = github.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/([a-zA-Z0-9_.-]+)/i);
     github = ghMatch ? 'https://github.com/' + ghMatch[1].replace(/\/$/, '') : "";
-    let portfolio = parsed.portfolio || "";
-    let certifications = Array.isArray(parsed.certifications) ? parsed.certifications.filter(Boolean).map(c => c.trim()) : [];
+    
+    let portfolio = (parsed.portfolio || "").trim();
+    if (portfolio.toLowerCase().includes("linkedin.com") || portfolio.toLowerCase().includes("github.com")) {
+        portfolio = "";
+    }
+    
+    // Normalize certifications objects to strings
+    let certifications = [];
+    if (Array.isArray(parsed.certifications)) {
+        certifications = parsed.certifications.filter(Boolean).map(c => {
+            if (typeof c === 'object') {
+                const parts = [];
+                if (c.title) parts.push(c.title);
+                if (c.provider) parts.push(`(${c.provider})`);
+                if (c.date) parts.push(`[${c.date}]`);
+                return parts.join(' ').trim();
+            }
+            return String(c).trim();
+        }).filter(Boolean);
+    }
+    
     let skills = Array.isArray(parsed.skills) ? parsed.skills.filter(Boolean).map(s => s.trim()) : [];
     let projects = Array.isArray(parsed.projects) ? parsed.projects : [];
     let experience = Array.isArray(parsed.experience) ? parsed.experience : [];
-    let phone = parsed.phone || "";
-    let hasInternship = !!parsed.hasInternship;
-    let hasWorkExperience = !!parsed.hasWorkExperience;
+    let phone = (parsed.phone || "").trim();
+    
+    // Extract hasInternship & hasWorkExperience from parsed sub-properties if not directly set
+    let hasInternship = !!parsed.hasInternship || (parsed.internships && parsed.internships.length > 0) || (Array.isArray(experience) && experience.some(e => e.is_internship));
+    let hasWorkExperience = !!parsed.hasWorkExperience || parsed.currently_working || (Array.isArray(experience) && experience.length > 0);
+    
     let atsReadiness = Math.min(100, Math.max(0, parseInt(parsed.atsReadiness) || 0));
     return { name, email, phone, linkedin, github, portfolio, certifications, skills, projects, experience, hasInternship, hasWorkExperience, atsReadiness };
 }
@@ -70,21 +96,90 @@ export function parseResumeFile(file) {
             'jpeg': 'image/jpeg'
         };
 
-        // --- LAYER 1: Multi-Modal Document Intelligence ---
-        if (geminiApiKey && supportedMimeTypes[fileExtension]) {
+        const reader = new FileReader();
+        reader.onload = async (event) => {
             try {
-                console.log("Using native multi-modal Gemini for ", fileExtension);
-                const reader = new FileReader();
-                reader.onload = async (e) => {
+                const arrayBuffer = event.target.result;
+                let extractedText = "";
+                
+                // 1. Extract raw text based on file format
+                if (fileExtension === 'pdf') {
                     try {
-                        const dataUrl = e.target.result;
-                        const base64Data = dataUrl.split(',')[1];
-                        const mimeType = supportedMimeTypes[fileExtension];
-                        
-                        const filePayload = { type: 'binary', mimeType, data: base64Data };
+                        extractedText = await extractTextFromPDF(arrayBuffer);
+                    } catch (err) {
+                        console.warn("Failed to extract PDF text:", err);
+                    }
+                } else if (fileExtension === 'docx') {
+                    try {
+                        extractedText = await extractTextFromDocx(arrayBuffer);
+                    } catch (err) {
+                        console.warn("Failed to extract DOCX text:", err);
+                    }
+                } else if (fileExtension === 'png' || fileExtension === 'jpg' || fileExtension === 'jpeg') {
+                    try {
+                        extractedText = await extractTextFromImage(file);
+                    } catch (err) {
+                        console.warn("Failed image OCR text extraction:", err);
+                    }
+                } else {
+                    // Try simple text decoding
+                    try {
+                        extractedText = new TextDecoder().decode(arrayBuffer);
+                    } catch (err) {
+                        console.warn("Failed simple text decoding:", err);
+                    }
+                }
+
+                // 2. Call Gemini if API Key is available
+                if (geminiApiKey) {
+                    try {
+                        let filePayload;
+                        if (supportedMimeTypes[fileExtension]) {
+                            // Convert ArrayBuffer to Base64
+                            let binary = '';
+                            const bytes = new Uint8Array(arrayBuffer);
+                            const len = bytes.byteLength;
+                            for (let i = 0; i < len; i++) {
+                                binary += String.fromCharCode(bytes[i]);
+                            }
+                            const base64Data = window.btoa(binary);
+                            
+                            filePayload = {
+                                type: 'binary',
+                                mimeType: supportedMimeTypes[fileExtension],
+                                data: base64Data,
+                                extractedText: extractedText
+                            };
+                        } else {
+                            filePayload = {
+                                type: 'text',
+                                data: extractedText
+                            };
+                        }
+
+                        console.log("Calling Gemini API with payload...");
                         const llmProfile = await extractProfileWithGemini(filePayload, geminiApiKey);
-                        
                         if (llmProfile) {
+                            // Deep scan raw text for links/emails/phone if LLM missed or malformed them
+                            if (extractedText) {
+                                if (!llmProfile.email) {
+                                    const emailMatch = extractedText.match(/\b[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}\b/);
+                                    if (emailMatch) llmProfile.email = emailMatch[0];
+                                }
+                                if (!llmProfile.phone) {
+                                    const phoneMatch = extractedText.match(/(?:\+?\d{1,3}[-.\s]?)?\(?\d{3,4}\)?[-.\s]?\d{3,4}[-.\s]?\d{3,4}\b/);
+                                    if (phoneMatch) llmProfile.phone = phoneMatch[0].trim();
+                                }
+                                if (!llmProfile.linkedin) {
+                                    const rawLi = extractedText.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/(?:in\/|pub\/|profile\/)?([a-zA-Z0-9_.-]+)/i);
+                                    if (rawLi) llmProfile.linkedin = 'https://www.linkedin.com/in/' + rawLi[1];
+                                }
+                                if (!llmProfile.github) {
+                                    const rawGh = extractedText.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/([a-zA-Z0-9_.-]+)/i);
+                                    if (rawGh) llmProfile.github = 'https://github.com/' + rawGh[1];
+                                }
+                            }
+
                             // Calculate completeness (Layer 14)
                             let completenessScore = 0;
                             let maxScore = 5;
@@ -96,7 +191,6 @@ export function parseResumeFile(file) {
                             
                             const completenessPct = (completenessScore / maxScore) * 100;
                             llmProfile.resume_completeness = completenessPct;
-
                             llmProfile.atsReadiness = calculateAtsFromProfile(llmProfile);
 
                             // Adapt to internal legacy schema requirements
@@ -104,91 +198,34 @@ export function parseResumeFile(file) {
                             llmProfile.hasInternship = (llmProfile.internships && llmProfile.internships.length > 0) || (Array.isArray(llmProfile.experience) && llmProfile.experience.some(e => e.is_internship));
                             llmProfile.hasWorkExperience = llmProfile.currently_working || (Array.isArray(llmProfile.experience) && llmProfile.experience.length > 0);
 
-                            // Deep scan raw text for links if LLM missed them
-                            if (typeof text !== 'undefined') {
-                                if (!llmProfile.linkedin) {
-                                    const rawLi = text.match(/(?:https?:\/\/)?(?:www\.)?linkedin\.com\/(?:in\/|pub\/|profile\/)?([a-zA-Z0-9_.-]+)/i);
-                                    if (rawLi) llmProfile.linkedin = 'https://www.linkedin.com/in/' + rawLi[1];
-                                }
-                                if (!llmProfile.github) {
-                                    const rawGh = text.match(/(?:https?:\/\/)?(?:www\.)?github\.com\/([a-zA-Z0-9_.-]+)/i);
-                                    if (rawGh) llmProfile.github = 'https://github.com/' + rawGh[1];
-                                }
-                            }
-
-                            console.log("LLM successfully parsed multi-modal resume:", llmProfile);
-                            resolve(llmProfile);
+                            const sanitized = sanitizeParsedProfile(llmProfile, file.name);
+                            sanitized.rawText = extractedText;
+                            console.log("LLM successfully parsed and sanitized resume:", sanitized);
+                            resolve(sanitized);
                             return;
                         }
-                    } catch(err) {
-                        console.warn("Gemini multi-modal extraction failed, falling back.", err);
-                        fallbackToStandardExtract();
+                    } catch (err) {
+                        console.warn("Gemini extraction failed, falling back to heuristics.", err);
                     }
-                };
-                reader.readAsDataURL(file);
-                return;
+                }
+
+                // 3. Heuristics fallback
+                console.log("Running heuristics fallback parsing...");
+                if (!extractedText) throw new Error("The uploaded file seems to be empty or unreadable.");
+                const candidate = await parseRawText(extractedText, file.name);
+                candidate.rawText = extractedText;
+                resolve(candidate);
+
             } catch (err) {
-                console.warn("Error preparing multi-modal data, falling back.", err);
+                fallbackParse(file, resolve, reject, err);
             }
-        }
+        };
 
-        // Fallback to text extraction
-        fallbackToStandardExtract();
+        reader.onerror = (err) => {
+            fallbackParse(file, resolve, reject, err);
+        };
 
-        function fallbackToStandardExtract() {
-            if (fileExtension === 'pdf') {
-                const reader = new FileReader();
-                reader.onload = async (event) => {
-                    try {
-                        const text = await extractTextFromPDF(event.target.result);
-                        if (!text) throw new Error("The uploaded file seems to be empty.");
-                        const candidate = await parseRawText(text, file.name);
-                        candidate.rawText = text;
-                        resolve(candidate);
-                    } catch (err) {
-                        fallbackParse(file, resolve, reject, err);
-                    }
-                };
-                reader.readAsArrayBuffer(file);
-            } else if (fileExtension === 'docx') {
-                const reader = new FileReader();
-                reader.onload = async (event) => {
-                    try {
-                        const text = await extractTextFromDocx(event.target.result);
-                        if (!text) throw new Error("The uploaded file seems to be empty.");
-                        const candidate = await parseRawText(text, file.name);
-                        candidate.rawText = text;
-                        resolve(candidate);
-                    } catch (err) {
-                        fallbackParse(file, resolve, reject, err);
-                    }
-                };
-                reader.readAsArrayBuffer(file);
-            } else if (fileExtension === 'png' || fileExtension === 'jpg' || fileExtension === 'jpeg') {
-                extractTextFromImage(file)
-                    .then(async (text) => {
-                        if (!text || text.trim() === '') throw new Error("The uploaded image seems to be empty or unreadable.");
-                        const candidate = await parseRawText(text, file.name);
-                        candidate.rawText = text;
-                        resolve(candidate);
-                    })
-                    .catch(err => fallbackParse(file, resolve, reject, err));
-            } else {
-                const reader = new FileReader();
-                reader.onload = async (event) => {
-                    try {
-                        const text = event.target.result.trim();
-                        if (!text) throw new Error("The uploaded file seems to be empty.");
-                        const candidate = await parseRawText(text, file.name);
-                        candidate.rawText = text;
-                        resolve(candidate);
-                    } catch (err) {
-                        fallbackParse(file, resolve, reject, err);
-                    }
-                };
-                reader.readAsText(file);
-            }
-        }
+        reader.readAsArrayBuffer(file);
     });
 }
 
