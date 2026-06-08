@@ -32,6 +32,8 @@ CRITICAL NAME RULES FOR candidate_name:
 - Populate both the 'experience' array (with 'is_internship' flag and 'duration_months') and the 'internships' string array.
 5. Projects: Identify Title, Description, Tech Stack, URLs. 
 - CRITICAL PROJECT RULE: Only extract actual, built technical projects, school/university projects, or portfolio repositories.
+- CRITICAL PROJECT SPLITTING & TITLE RULE: If the resume lists multiple projects (even if they are on the same line, or concatenated in the text, such as 'ProjectA Description. ProjectB Description. ProjectC Description'), you MUST split them into separate project objects in the JSON array. Use CamelCase, hyphens, underscores, or capitalization patterns in titles (like 'Email_Spam_detection_agent', 'AI-Educational-Content-Generator', 'CampusPlacementAnalytics') to detect where a new project title begins. Do NOT concatenate multiple projects into a single project description.
+- DO NOT extract generic descriptions of work, bullet points, or activities (such as 'responsive web app', 'UI for digital platform', 'developed a website') as project titles. Projects must have distinct, noun-based technical names.
 - DO NOT extract contact links, social profiles, email addresses, phone numbers, or external platform links (e.g. mailto:..., tel:..., linkedin.com, hackerrank.com, leetcode.com, github.com profile link) as project entries. These are social identities, not projects built by the candidate.
 6. Certifications: Detect Provider, Title, and Date.
 - CRITICAL CERTIFICATION RULE: Only extract real, verified professional certifications, credentials, courses, or licenses (e.g. AWS Certified Solutions Architect, Coursera Python Course, NPTEL, Microsoft Azure, etc.).
@@ -54,7 +56,8 @@ Tasks:
 5. Check experience duration_months calculations. Recalculate if they are mathematically wrong (assuming today is June 2026).
 6. Check project counts and certification counts. Ensure that certifications contain ONLY valid, verified professional credentials, licenses, or courses. Remove any false positives like "DECLARATION", "SOLUTIONS", signature blocks, headings, or references.
 7. Correct wrong mappings (e.g. if an experience was mapped as a project, or if social links/contact info like mailto, tel, hackerrank, linkedin were mapped as projects. Aggressively remove any project entry that is actually contact information or a social/coding profile link).
-8. Ensure the structure perfectly matches the strict JSON schema.
+8. CRITICAL PROJECT VERIFICATION: Verify that projects are split correctly. If you find a project description that contains other project titles (e.g. text containing titles like 'Email_Spam_detection_agent', 'AI-Educational-Content-Generator', or 'CampusPlacementAnalytics' followed by descriptions), you MUST split them into separate projects in the JSON array, setting the correct title, description, and technology stack for each. Remove any generic project titles that are actually description lines (like 'responsive web app' or 'UI for digital platform').
+9. Ensure the structure perfectly matches the strict JSON schema.
 9. Re-calculate confidence scores based on your verification.
 10. Add any warnings to the warnings array if data looks suspicious or unclear.
 11. Return the finalized JSON.`;

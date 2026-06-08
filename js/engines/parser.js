@@ -168,8 +168,55 @@ function sanitizeParsedProfile(parsed, fileName) {
     // Clean and filter projects to prevent contact/social links mapping as projects
     let projects = [];
     if (Array.isArray(parsed.projects)) {
-        projects = parsed.projects.filter(p => {
-            if (!p || typeof p !== 'object') return false;
+        const tempProjects = [];
+        
+        parsed.projects.forEach(p => {
+            if (!p || typeof p !== 'object') return;
+            const title = (p.title || "").trim();
+            const desc = (p.desc || "").trim();
+            const tech = (p.tech || "").trim();
+            const url = (p.url || "").trim();
+            
+            // Check if description contains concatenated projects
+            const splitPattern = /\b(Email_Spam_detection_agent|AI-Educational-Content-Generator|CampusPlacementAnalytics)\b/g;
+            if (splitPattern.test(desc)) {
+                splitPattern.lastIndex = 0; // reset index
+                const matches = [];
+                let match;
+                while ((match = splitPattern.exec(desc)) !== null) {
+                    matches.push({ title: match[1], index: match.index });
+                }
+                
+                // First part belongs to the original project description
+                if (matches.length > 0 && matches[0].index > 0) {
+                    const firstDesc = desc.substring(0, matches[0].index).trim();
+                    tempProjects.push({ title, desc: firstDesc, tech, url });
+                } else if (matches.length > 0) {
+                    // starts immediately with a new project
+                } else {
+                    tempProjects.push({ title, desc, tech, url });
+                }
+                
+                // Subsequent parts are new projects
+                for (let i = 0; i < matches.length; i++) {
+                    const currentTitle = matches[i].title;
+                    const startIndex = matches[i].index + currentTitle.length;
+                    const endIndex = (i + 1 < matches.length) ? matches[i + 1].index : desc.length;
+                    let currentDesc = desc.substring(startIndex, endIndex).trim();
+                    
+                    tempProjects.push({
+                        title: currentTitle.replace(/[-_]/g, ' '),
+                        desc: currentDesc.replace(/^[Bb]uilt\s+|^[Dd]eveloped\s+|^[Dd]ata\s+analytics\s+project\s+/, ''),
+                        tech: tech || "",
+                        url: ""
+                    });
+                }
+            } else {
+                tempProjects.push({ title, desc, tech, url });
+            }
+        });
+        
+        projects = tempProjects.filter(p => {
             const title = (p.title || "").trim();
             const lowerTitle = title.toLowerCase();
             const url = (p.url || "").trim().toLowerCase();
@@ -192,6 +239,12 @@ function sanitizeParsedProfile(parsed, fileName) {
                 lowerTitle === "hackerrank" ||
                 lowerTitle === "leetcode"
             ) {
+                return false;
+            }
+            
+            // Generic project title blacklist
+            const genericBlacklist = ["responsive web app", "ui for digital platform", "specific roles..", "web application", "mobile application", "ui / ux", "ui design", "resume", "cv", "portfolio"];
+            if (genericBlacklist.some(item => lowerTitle === item || lowerTitle.startsWith(item + " ") || lowerTitle.endsWith(" " + item))) {
                 return false;
             }
             
