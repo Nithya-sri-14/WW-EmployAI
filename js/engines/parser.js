@@ -280,7 +280,7 @@ function sanitizeParsedProfile(parsed, fileName) {
             const url = (p.url || "").trim();
             
             // Check if description contains concatenated projects
-            const splitPattern = /\b(RAG[ -_]Career[ -_]Chatbot|AI[ -_]Document[ -_]Search|Email[ -_]Spam[ -_]detection[ -_]agent|AI[ -_]Educational[ -_]Content[ -_]Generator|Campus[ -_]?Placement[ -_]?Analytics|AI[ -_]Resume[ -_]Matcher)\b/gi;
+            const splitPattern = /\b(RAG[ -_]Career[ -_]Chatbot|AI[ -_]Document[ -_]Search|Email[ -_]Spam[ -_]detection[ -_]agent|AI[ -_]Educational[ -_]Content[ -_]Generator|Campus[ -_]?Placement[ -_]?Analytics|AI[ -_]Resume[ -_]Matcher)/gi;
             if (splitPattern.test(desc)) {
                 splitPattern.lastIndex = 0; // reset index
                 const matches = [];
