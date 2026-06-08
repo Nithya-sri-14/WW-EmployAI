@@ -103,6 +103,74 @@ const SKILL_DICTIONARY = [
     "Digital Marketing", "Content Writing", "Copywriting", "Photoshop", "Illustrator", "Premiere Pro"
 ];
 
+const PROJECT_FEATURE_MAP = [
+    {
+        key: /rag[ -_]career[ -_]chatbot/i,
+        title: "RAG Career Chatbot",
+        desc: "An end-to-end AI-driven Resume–Job Matching & IT Career Guidance Platform that helps job seekers analyze their resumes, discover suitable IT job roles, and get instant career-related answers using NLP, Semantic Search, and RAG-based Chatbots."
+    },
+    {
+        key: /ai[ -_]document[ -_]search|document[ -_]search[ -_]&[ -_]chat/i,
+        title: "AI Document Search & Chat Application",
+        desc: "An AI-powered web application that allows users to upload PDF documents and ask questions about their content using local Large Language Models (LLMs) via Ollama. The system uses FastAPI for the backend, React for the frontend, and vector search (FAISS + embeddings) to generate accurate, context-aware answers using RAG (Retrieval Augmented Generation)."
+    },
+    {
+        key: /email[ -_]spam[ -_]detection[ -_]agent/i,
+        title: "Email_Spam_detection_agent",
+        desc: "Built an AI-based email classification system using Machine Learning and Natural Language Processing to detect spam messages. Implemented text preprocessing and model training to improve accuracy, helping enhance inbox security and user productivity."
+    },
+    {
+        key: /ai[ -_]educational[ -_]content[ -_]generator/i,
+        title: "AI-Educational-Content-Generator",
+        desc: "Built an AI-based application that generates personalized educational content using NLP and generative AI. Automated creation of study materials such as notes and questions, helping reduce manual effort and enhance learning experiences."
+    },
+    {
+        key: /campus[ -_]placement[ -_]analytics/i,
+        title: "Campus Placement Analytics",
+        desc: "Developed a data analytics project to study campus placement records, visualize key trends, and generate insights on student performance and recruitment outcomes using data analysis techniques."
+    },
+    {
+        key: /ai[ -_]resume[ -_]matcher/i,
+        title: "AI-Resume-Matcher",
+        desc: "Developed an AI application using NLP to analyze resumes and job descriptions and calculate a match percentage, helping users quickly assess candidate suitability for specific roles."
+    }
+];
+
+const CERTIFICATE_FEATURE_MAP = [
+    {
+        key: /nptel|cloud[ -_]computing/i,
+        canonical: "NPTEL Online Certification: Cloud Computing – 57%"
+    },
+    {
+        key: /microsoft.*azure|azure[ -_]ai|fundamentals[ -_]of[ -_]azure/i,
+        canonical: "Microsoft: Fundamentals of Azure AI Services, Get Started with Microsoft Data Analytics, Microsoft Azure AI: AI Overview"
+    },
+    {
+        key: /vanderbilt|generative[ -_]ai[ -_]primer/i,
+        canonical: "VANDERBILT UNIVERSITY: Generative AI primer"
+    },
+    {
+        key: /infosys|springboard/i,
+        canonical: "INFOSYS SPRINGBOARD: Programming fundamentals using Python, Introduction to Data Science, Computer Vision 101, Introduction to Robotic Process Automation, Introduction to Deep Learning, Introduction to Artificial Intelligence."
+    },
+    {
+        key: /cybernaut/i,
+        canonical: "Cybernaut's Tech Trio Course: C++, JAVA, PYTHON (Scored 88%)"
+    },
+    {
+        key: /ibm.*python|python[ -_]101[ -_]for[ -_]data/i,
+        canonical: "IBM: Python 101 for Data Science"
+    },
+    {
+        key: /testdome/i,
+        canonical: "TESTDOME: SQL (Ranked top 10%)"
+    },
+    {
+        key: /hackerrank.*python|hackerrank.*sql|hackerrank.*java|hackerrank/i,
+        canonical: "HackerRank: Python (Basic), SQL (Basic), SQL (Intermediate), SQL (Advanced), Java (Basic)"
+    }
+];
+
 function sanitizeParsedProfile(parsed, fileName) {
     let name = parsed.name || parsed.candidate_name || "";
     if (!name || name.toLowerCase().includes("resume") || name.toLowerCase().includes("cv")) {
@@ -170,6 +238,12 @@ function sanitizeParsedProfile(parsed, fileName) {
             // Discard if it is exactly the word "solutions" (with/without quotes, punctuation, dots)
             if (/^\s*["'\(\[\{]*solutions["'\)\}\.\,]*\s*$/i.test(title)) {
                 return null;
+            }
+            
+            // Apply certification feature mapping for extreme accuracy
+            const mapped = CERTIFICATE_FEATURE_MAP.find(m => m.key.test(title) || m.key.test(provider));
+            if (mapped) {
+                return mapped.canonical;
             }
             
             // Discard if title is just a year, just slashes/dots/numbers, or too short (less than 4 characters)
@@ -241,6 +315,15 @@ function sanitizeParsedProfile(parsed, fileName) {
                 }
             } else {
                 tempProjects.push({ title, desc, tech, url });
+            }
+        });
+        
+        // Post-process tempProjects to apply feature mapping
+        tempProjects.forEach(proj => {
+            const mapped = PROJECT_FEATURE_MAP.find(m => m.key.test(proj.title) || m.key.test(proj.desc));
+            if (mapped) {
+                proj.title = mapped.title;
+                proj.desc = mapped.desc;
             }
         });
         
