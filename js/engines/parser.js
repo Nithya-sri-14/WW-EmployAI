@@ -948,13 +948,15 @@ export async function parseRawText(text, fileName) {
         let proj = null;
         for (const line of sections.projects) {
             const trimmed = line.trim();
-            const isHeader = trimmed.length < 80
-                && !/^(developed|implemented|created|designed|built|worked|using|tech|technologies|tools|features|•|–|—|\-|\*)/i.test(trimmed)
-                && !trimmed.endsWith('.') && !trimmed.endsWith(';') && !trimmed.endsWith(',');
-            if (isHeader && trimmed.length > 3) {
+            // Clean leading bullet points, numbers, and symbols to isolate the potential title
+            const cleanLine = trimmed.replace(/^[•\-\*\s\d#:\u2013\u2014]+/, "").trim();
+            const isHeader = cleanLine.length > 3 && cleanLine.length < 80
+                && !/^(developed|implemented|created|designed|built|worked|using|tech|technologies|tools|features)/i.test(cleanLine)
+                && !cleanLine.endsWith('.') && !cleanLine.endsWith(';') && !cleanLine.endsWith(',');
+            if (isHeader) {
                 if (proj && proj.title) addProject(proj.title, proj.desc, proj.tech);
-                proj = { title: trimmed, desc: "", tech: "" };
-                const techMatch = trimmed.match(/using\s+([A-Za-z0-9#,.\s]+)$/i);
+                proj = { title: cleanLine, desc: "", tech: "" };
+                const techMatch = cleanLine.match(/using\s+([A-Za-z0-9#,.\s]+)$/i);
                 if (techMatch) proj.tech = techMatch[1].trim();
             } else if (proj) {
                 const techMatch = trimmed.match(/^(tech|technologies|tools|stack)\s*[:\-]?\s*(.+)/i);
