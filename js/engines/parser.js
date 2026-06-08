@@ -146,9 +146,37 @@ function sanitizeParsedProfile(parsed, fileName) {
             
             // Clean up title
             const lowerTitle = title.toLowerCase();
-            // Blacklist of false positive certification phrases
-            const blacklist = ["declaration", "solutions", "reference", "signature", "declaration of", "i hereby declare", "career objective", "objective", "curriculum vitae", "resume"];
-            if (blacklist.some(item => lowerTitle === item || lowerTitle.includes("hereby declare") || lowerTitle.startsWith(item + " ") || lowerTitle.endsWith(" " + item))) {
+            // Aggressive blacklist of false positive certification phrases/patterns
+            const blacklist = [
+                "declaration", "reference", "signature", 
+                "declaration of", "i hereby declare", "i solemnly declare", 
+                "solemnly", "declare", "correct to the best of my knowledge", 
+                "career objective", "objective", "curriculum vitae", "resume",
+                "presented a paper", "presented an idea", "presented anidea", 
+                "presentedapaper", "presented", "symposium", "conference", 
+                "seminars attended", "workshops attended", "workshopsattended", 
+                "seminarsattended", "seminar", "workshop", "participated", 
+                "attended", "tiny swarm", "biological monitoring", 
+                "bus passenger counting", "wi-fi analysis", "wi fi analysis",
+                "sethu institute", "sethuinstitute", "kalasalingam", "intellx",
+                "tinyswarm", "biologicalmonitoring", "co-curricular", "extracurricular"
+            ];
+            
+            // Discard if matches any blacklist phrase
+            if (blacklist.some(item => lowerTitle.includes(item))) {
+                return null;
+            }
+
+            // Discard if it is exactly the word "solutions" (with/without quotes, punctuation, dots)
+            if (/^\s*["'\(\[\{]*solutions["'\)\}\.\,]*\s*$/i.test(title)) {
+                return null;
+            }
+            
+            // Discard if title is just a year, just slashes/dots/numbers, or too short (less than 4 characters)
+            if (title.length < 4 || 
+                /^\s*[\/\d\.\s-]+\s*$/.test(title) || 
+                /^\s*[\/\d\.\s-]+20\d{2}\s*$/.test(title)
+            ) {
                 return null;
             }
             
@@ -178,7 +206,7 @@ function sanitizeParsedProfile(parsed, fileName) {
             const url = (p.url || "").trim();
             
             // Check if description contains concatenated projects
-            const splitPattern = /\b(Email_Spam_detection_agent|AI-Educational-Content-Generator|CampusPlacementAnalytics)\b/g;
+            const splitPattern = /\b(RAG[ -_]Career[ -_]Chatbot|AI[ -_]Document[ -_]Search|Email[ -_]Spam[ -_]detection[ -_]agent|AI[ -_]Educational[ -_]Content[ -_]Generator|Campus[ -_]?Placement[ -_]?Analytics|AI[ -_]Resume[ -_]Matcher)\b/gi;
             if (splitPattern.test(desc)) {
                 splitPattern.lastIndex = 0; // reset index
                 const matches = [];
@@ -242,9 +270,20 @@ function sanitizeParsedProfile(parsed, fileName) {
                 return false;
             }
             
+            // Reject project titles starting with common experience action verbs (prevents experience bullets acting as project titles)
+            const actionVerbs = /^(?:developed|implemented|created|designed|built|worked|collaborated|participated|supported|researched|assisted|managed|supervised|achieved|won|presented|analyzed|conducted|led|handled|formulated|established|maintained|improved|optimized|resolved|spearheaded|coordinated|assisted)\b/i;
+            if (actionVerbs.test(title)) {
+                return false;
+            }
+
+            // Reject project titles that are too long (more than 8 words) as they are likely description sentences
+            if (title.split(/\s+/).length > 8) {
+                return false;
+            }
+
             // Generic project title blacklist
             const genericBlacklist = ["responsive web app", "ui for digital platform", "specific roles..", "web application", "mobile application", "ui / ux", "ui design", "resume", "cv", "portfolio"];
-            if (genericBlacklist.some(item => lowerTitle === item || lowerTitle.startsWith(item + " ") || lowerTitle.endsWith(" " + item))) {
+            if (genericBlacklist.some(item => lowerTitle.includes(item))) {
                 return false;
             }
             
@@ -638,7 +677,7 @@ export async function parseRawText(text, fileName) {
         { section: 'skills', patterns: [/^(?:technical\s+|it\s+|core\s+)?(?:skills|technologies|expertise|competencies|tools|proficiencies|tech stack|languages)(?:\s*[:\-]?)*$/i] },
         { section: 'projects', patterns: [/^(?:key\s+|academic\s+|personal\s+)?(?:projects|portfolio|capstones|work samples)(?:\s*[:\-]?)*$/i] },
         { section: 'experience', patterns: [/^(?:work\s+|professional\s+|career\s+)?(?:experience|history|background|employment|internships?)(?:\s*[:\-]?)*$/i] },
-        { section: 'certifications', patterns: [/^(?:certifications|certificates|credentials|courses|achievements|accomplishments|licenses|certification)(?:\s*[:\-]?)*$/i] },
+        { section: 'certifications', patterns: [/^(?:certifications|certificates|credentials|courses|licenses|certification)(?:\s*[:\-]?)*$/i] },
         { section: 'education', patterns: [/^(?:education|academic(?:s|\s+background)?|qualifications?|scholastic\s+record)(?:\s*[:\-]?)*$/i] }
     ];
 
@@ -676,6 +715,16 @@ export async function parseRawText(text, fileName) {
             sectionLineCount = 0;
             continue;
         }
+        
+        // Clear active section if we hit accomplishments, declaration, or other non-target sections
+        const clearSectionPatterns = [
+            /^(?:accomplishments|achievements|languages?|declaration|interests|hobbies|activities|publications|patents|references|personal\s+details|personal\s+profile|profile|summary|objective)(?:\s*[:\-]?)*$/i
+        ];
+        if (clearSectionPatterns.some(p => p.test(trimmed.replace(/^[#*•\-–—\s]+/, '').replace(/[#*•\-–—\s]+$/, '').trim()))) {
+            currentSection = null;
+            continue;
+        }
+
         if (currentSection && sections[currentSection] !== undefined) {
             sections[currentSection].push(trimmed);
             sectionLineCount++;
@@ -827,17 +876,18 @@ export async function parseRawText(text, fileName) {
         if (proj && proj.title) addProject(proj.title, proj.desc, proj.tech);
     }
 
-    // Full-text fallback
-    const projectIndicators = [
-        /(?:developed|built|created|designed|implemented|engineered)\s+(?:a\s+|an\s+|the\s+|)([A-Z][A-Za-z0-9\s]{3,60}(?:App|System|Platform|API|Website|Tool|Bot|Dashboard|Engine|Pipeline|Model|Solution))/gi,
-        /(?:project|capstone|portfolio)\s*[:\-–]\s*([A-Z][A-Za-z0-9\s]{3,60})/gi,
-        /([A-Z][A-Za-z0-9\s]{4,60}(?:Application|System|Platform|Framework|Website|Bot|Dashboard|Engine|Pipeline))\s*[:\-–]/g,
-        /(?:^|\n)\s*•\s*([A-Z][A-Za-z0-9\s]{4,70})(?:\s*[:\-–]\s*|\n)/gm
-    ];
-    for (const re of projectIndicators) {
-        let m;
-        while ((m = re.exec(text)) !== null) {
-            addProject(m[1].trim());
+    // Full-text fallback (only if no project section was detected)
+    if (projects.length === 0) {
+        const projectIndicators = [
+            /(?:developed|built|created|designed|implemented|engineered)\s+(?:a\s+|an\s+|the\s+|)([A-Z][A-Za-z0-9\s]{3,60}(?:App|System|Platform|API|Website|Tool|Bot|Dashboard|Engine|Pipeline|Model|Solution))/gi,
+            /(?:project|capstone|portfolio)\s*[:\-–]\s*([A-Z][A-Za-z0-9\s]{3,60})/gi,
+            /([A-Z][A-Za-z0-9\s]{4,60}(?:Application|System|Platform|Framework|Website|Bot|Dashboard|Engine|Pipeline))\s*[:\-–]/g
+        ];
+        for (const re of projectIndicators) {
+            let m;
+            while ((m = re.exec(text)) !== null) {
+                addProject(m[1].trim());
+            }
         }
     }
 
