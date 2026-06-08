@@ -32,6 +32,8 @@ CRITICAL NAME RULES FOR candidate_name:
 - Populate both the 'experience' array (with 'is_internship' flag and 'duration_months') and the 'internships' string array.
 5. Projects: Identify Title, Description, Tech Stack, URLs. 
 6. Certifications: Detect Provider, Title, and Date.
+- CRITICAL CERTIFICATION RULE: Only extract real, verified professional certifications, credentials, courses, or licenses (e.g. AWS Certified Solutions Architect, Coursera Python Course, NPTEL, Microsoft Azure, etc.).
+- DO NOT extract declarations, footer lines, resume headers, signatures, reference notices, or heading texts (e.g. 'DECLARATION', 'SOLUTIONS', 'Reference', 'Project details', etc.). If the document does not mention any certifications, return an empty array.
 7. Skills Ontology: Standardize and categorize all programming languages, frameworks, DBs, Cloud, DevOps, AI/ML skills into an array.
 8. Confidence: For every field extracted, calculate a confidence score (0-100) based on how clearly it was stated in the resume. Store these in the confidence_scores object.
 9. Completeness: Calculate a resume_completeness percentage (0-100) based on how many core fields (identity, education, experience, skills) were successfully extracted.
@@ -48,7 +50,7 @@ Tasks:
 3. CRITICAL EMAIL CLEANING: Ensure the email address does not have trailing concatenated text like 'LinkedIn' or 'GitHub'. Clean it to end in a valid TLD (like .com, .in, .org).
 4. CRITICAL IDENTITY CHECK: Verify that candidate_name is a real human name. It MUST NOT contain numbers, technical terms, skills, languages, job titles, verbs, or file extensions. It must strictly be the resume owner's personal name found near the contact info. If the name is blank, you MUST aggressively scan the document to find the candidate's real name.
 5. Check experience duration_months calculations. Recalculate if they are mathematically wrong (assuming today is June 2026).
-6. Check project counts and certification counts.
+6. Check project counts and certification counts. Ensure that certifications contain ONLY valid, verified professional credentials, licenses, or courses. Remove any false positives like "DECLARATION", "SOLUTIONS", signature blocks, headings, or references.
 7. Correct wrong mappings (e.g. if an experience was mapped as a project).
 8. Ensure the structure perfectly matches the strict JSON schema.
 9. Re-calculate confidence scores based on your verification.

@@ -55,14 +55,33 @@ function sanitizeParsedProfile(parsed, fileName) {
     let certifications = [];
     if (Array.isArray(parsed.certifications)) {
         certifications = parsed.certifications.filter(Boolean).map(c => {
+            let title = "";
+            let provider = "";
+            let date = "";
+            if (typeof c === 'object') {
+                title = (c.title || "").trim();
+                provider = (c.provider || "").trim();
+                date = (c.date || "").trim();
+            } else {
+                title = String(c).trim();
+            }
+            
+            // Clean up title
+            const lowerTitle = title.toLowerCase();
+            // Blacklist of false positive certification phrases
+            const blacklist = ["declaration", "solutions", "reference", "signature", "declaration of", "i hereby declare", "career objective", "objective", "curriculum vitae", "resume"];
+            if (blacklist.some(item => lowerTitle === item || lowerTitle.includes("hereby declare") || lowerTitle.startsWith(item + " ") || lowerTitle.endsWith(" " + item))) {
+                return null;
+            }
+            
             if (typeof c === 'object') {
                 const parts = [];
-                if (c.title) parts.push(c.title);
-                if (c.provider) parts.push(`(${c.provider})`);
-                if (c.date) parts.push(`[${c.date}]`);
+                if (title) parts.push(title);
+                if (provider) parts.push(`(${provider})`);
+                if (date) parts.push(`[${date}]`);
                 return parts.join(' ').trim();
             }
-            return String(c).trim();
+            return title;
         }).filter(Boolean);
     }
     
