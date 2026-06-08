@@ -202,29 +202,8 @@ function renderSnapshotStep(container) {
                     </div>
                 </div>
 
-                <div class="form-row" style="gap:24px; margin-bottom:16px;">
-                    <div class="form-group" style="flex:1;">
-                        <label class="form-label" for="edit-workstatus">Work Experience Status</label>
-                        <select id="edit-workstatus" class="form-input" style="padding:8px 16px; height:40px;">
-                            <option value="true" ${activeCandidate.hasWorkExperience ? 'selected' : ''}>Has Work Experience (Yes)</option>
-                            <option value="false" ${!activeCandidate.hasWorkExperience ? 'selected' : ''}>No Work Experience (No)</option>
-                        </select>
-                    </div>
-                    <div class="form-group" style="flex:1;">
-                        <label class="form-label" for="edit-experience-count">Work Experience Count</label>
-                        <input type="number" id="edit-experience-count" class="form-input" value="${(activeCandidate.experience || []).length}" min="0" max="10" style="padding-left:16px; height:40px;">
-                    </div>
-                </div>
-
-                <div class="form-row" style="gap:24px; margin-bottom:16px;">
-                    <div class="form-group" style="flex:1;">
-                        <label class="form-label" for="edit-internship">Internship Status</label>
-                        <select id="edit-internship" class="form-input" style="padding:8px 16px; height:40px;">
-                            <option value="true" ${activeCandidate.hasInternship ? 'selected' : ''}>Has Internship (Yes)</option>
-                            <option value="false" ${!activeCandidate.hasInternship ? 'selected' : ''}>No Internship (No)</option>
-                        </select>
-                    </div>
-                    <div class="form-group" style="flex:1;">
+                <div class="form-row" style="margin-bottom:16px;">
+                    <div class="form-group">
                         <label class="form-label" for="edit-projects-count">Projects Count</label>
                         <input type="number" id="edit-projects-count" class="form-input" value="${(activeCandidate.projects || []).length}" min="0" max="10" style="padding-left:16px; height:40px;">
                     </div>
@@ -361,33 +340,6 @@ function renderSnapshotStep(container) {
         }
     });
 
-    // Save / Sync lists functions
-    const saveExpFromUI = () => {
-        const titles = document.querySelectorAll('.exp-title');
-        const companies = document.querySelectorAll('.exp-company');
-        const durations = document.querySelectorAll('.exp-duration');
-        const months = document.querySelectorAll('.exp-months');
-    const workStatusSelect = document.getElementById('edit-workstatus');
-    const expCountInput = document.getElementById('edit-experience-count');
-    
-    if (workStatusSelect && expCountInput) {
-        workStatusSelect.addEventListener('change', () => {
-            if (workStatusSelect.value === 'false') {
-                expCountInput.value = 0;
-            } else if (parseInt(expCountInput.value) <= 0) {
-                expCountInput.value = 1;
-            }
-        });
-        expCountInput.addEventListener('input', () => {
-            const val = parseInt(expCountInput.value) || 0;
-            if (val > 0) {
-                workStatusSelect.value = 'true';
-            } else {
-                workStatusSelect.value = 'false';
-            }
-        });
-    }
-
     // Program selection bindings
     const allPrograms = getStorageItem('wrenchwise_programs', []);
     // Hide disabled or incomplete programs (missing skills, projects, or certs) to prevent hallucinations
@@ -446,44 +398,7 @@ function renderSnapshotStep(container) {
         activeCandidate.linkedin = document.getElementById('edit-linkedin').value;
         activeCandidate.github = document.getElementById('edit-github').value;
         
-        const expCount = parseInt(document.getElementById('edit-experience-count').value) || 0;
         const projCount = parseInt(document.getElementById('edit-projects-count').value) || 0;
-        const hasWork = document.getElementById('edit-workstatus').value === 'true';
-        const hasIntern = document.getElementById('edit-internship').value === 'true';
-
-        activeCandidate.hasWorkExperience = hasWork;
-        activeCandidate.hasInternship = hasIntern;
-
-        // Adjust experience array to match expCount
-        let currentExp = activeCandidate.experience || [];
-        if (currentExp.length < expCount) {
-            while (currentExp.length < expCount) {
-                const makeIntern = hasIntern && !currentExp.some(e => e.is_internship);
-                currentExp.push({
-                    title: makeIntern ? 'Software Engineer Intern' : 'Software Engineer',
-                    company: 'Technology Solutions',
-                    duration: '6 Months',
-                    duration_months: 6,
-                    desc: 'Developed features and wrote tests.',
-                    is_internship: makeIntern
-                });
-            }
-        } else if (currentExp.length > expCount) {
-            currentExp = currentExp.slice(0, expCount);
-        }
-        
-        // Ensure internship flag consistency in the array
-        if (hasIntern && currentExp.length > 0 && !currentExp.some(e => e.is_internship)) {
-            currentExp[0].is_internship = true;
-            if (!currentExp[0].title.toLowerCase().includes('intern')) {
-                currentExp[0].title += ' Intern';
-            }
-        } else if (!hasIntern) {
-            currentExp.forEach(e => {
-                e.is_internship = false;
-            });
-        }
-        activeCandidate.experience = currentExp;
 
         // Adjust projects array to match projCount
         let currentProj = activeCandidate.projects || [];
