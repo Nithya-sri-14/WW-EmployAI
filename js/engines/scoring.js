@@ -215,6 +215,49 @@ export function isFuzzyMatch(candSkill, progSkill) {
 }
 
 /**
+ * Checks if a text block contains a program skill or any of its canonical aliases with proper word boundaries.
+ */
+export function containsSkill(text, skill) {
+    if (!text || !skill) return false;
+    const cleanText = String(text).toLowerCase();
+    const cleanSkill = String(skill).toLowerCase();
+    
+    // 1. Direct match with word boundary
+    const escapedSkill = cleanSkill.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+    let pattern = '';
+    if (/^\w/.test(cleanSkill)) {
+        pattern += '\\b';
+    }
+    pattern += escapedSkill;
+    if (/\w$/.test(cleanSkill)) {
+        pattern += '\\b';
+    }
+    
+    let regex = new RegExp(pattern, 'i');
+    if (regex.test(cleanText)) return true;
+    
+    // 2. Check canonical aliases matching the same normalized skill
+    const targetCanonical = normalizeSkill(skill);
+    for (const [alias, canonical] of Object.entries(CANONICAL_SKILL_MAP)) {
+        if (canonical === targetCanonical) {
+            const escapedAlias = alias.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+            let aliasPattern = '';
+            if (/^\w/.test(alias)) {
+                aliasPattern += '\\b';
+            }
+            aliasPattern += escapedAlias;
+            if (/\w$/.test(alias)) {
+                aliasPattern += '\\b';
+            }
+            const aliasRegex = new RegExp(aliasPattern, 'i');
+            if (aliasRegex.test(cleanText)) return true;
+        }
+    }
+    
+    return false;
+}
+
+/**
  * Calculates raw component scores (0 to 100) for a candidate based on selected program benchmarks.
  */
 export function calculateComponentScores(candidate, program, benchmark) {
@@ -272,30 +315,18 @@ export function calculateComponentScores(candidate, program, benchmark) {
             if (months <= 0) months = 3; // base minimum per block
         }
         
-        // Match experience content with target program skills using boundary fuzzy matching
+        // Match experience content with target program skills using containsSkill (word-boundary & canonical alias checker)
         let matchWeight = 0;
         const matchedSkillsForExp = new Set();
         
-        // Tokenize title and description
-        const titleTokens = `${exp.title || ''}`.split(/[\s,.\-\/()]+/).filter(Boolean);
-        const descTokens = `${exp.desc || ''}`.split(/[\s,.\-\/()]+/).filter(Boolean);
-        
-        titleTokens.forEach(token => {
-            progSkills.forEach(pSkill => {
-                if (isFuzzyMatch(token, pSkill) && !matchedSkillsForExp.has(pSkill)) {
-                    matchWeight += 2.5; // High relevance weight for job title matches
-                    matchedSkillsForExp.add(pSkill);
-                }
-            });
-        });
-
-        descTokens.forEach(token => {
-            progSkills.forEach(pSkill => {
-                if (isFuzzyMatch(token, pSkill) && !matchedSkillsForExp.has(pSkill)) {
-                    matchWeight += 1.0; // Standard relevance weight for description matches
-                    matchedSkillsForExp.add(pSkill);
-                }
-            });
+        progSkills.forEach(pSkill => {
+            if (containsSkill(exp.title, pSkill)) {
+                matchWeight += 2.5; // High relevance weight for job title matches
+                matchedSkillsForExp.add(pSkill);
+            } else if (containsSkill(exp.desc, pSkill)) {
+                matchWeight += 1.0; // Standard relevance weight for description matches
+                matchedSkillsForExp.add(pSkill);
+            }
         });
 
         // Compute relevance factor (0.0 to 1.0)

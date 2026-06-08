@@ -6,6 +6,84 @@ import { SAMPLE_RESUMES } from '../data.js';
 import { extractProfileWithGemini } from '../api/gemini.js';
 import { getGeminiApiKey } from '../utils.js';
 
+export function parseDurationMonths(durationStr) {
+    if (!durationStr) return 0;
+    const cleanDur = durationStr.toLowerCase().trim();
+    
+    // Check if it already mentions months/years directly in a text form
+    const yearMatch = cleanDur.match(/(\d+)\s*yr|\b(\d+)\s*year/);
+    const monthMatch = cleanDur.match(/(\d+)\s*mo|\b(\d+)\s*month/);
+    if (yearMatch || monthMatch) {
+        let m = 0;
+        if (yearMatch) m += parseInt(yearMatch[1] || yearMatch[2]) * 12;
+        if (monthMatch) m += parseInt(monthMatch[1] || monthMatch[2]);
+        return m;
+    }
+    
+    // Split by common range separators
+    const parts = cleanDur.split(/\s*(?:to|[-–—\u2013\u2014])\s*/);
+    if (parts.length < 2) {
+        return 3; // base minimum fallback
+    }
+    
+    const startStr = parts[0].trim();
+    const endStr = parts[1].trim();
+    
+    const parseDatePart = (str) => {
+        const monthsMap = {
+            jan: 0, feb: 1, mar: 2, apr: 3, may: 4, jun: 5,
+            jul: 6, aug: 7, sep: 8, oct: 9, nov: 10, dec: 11
+        };
+        
+        // 1. Check for month name + year
+        const monthNameMatch = str.match(/\b(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*/i);
+        const yearMatch = str.match(/\b\d{4}\b/);
+        
+        let year = yearMatch ? parseInt(yearMatch[0]) : null;
+        let month = monthNameMatch ? monthsMap[monthNameMatch[1].toLowerCase().slice(0, 3)] : 0;
+        
+        if (year) return { year, month };
+        
+        // 2. Check for numeric MM/YYYY or MM-YYYY
+        const numericMatch = str.match(/\b(0?[1-9]|1[0-2])[\/\-–—](\d{4}|\d{2})\b/);
+        if (numericMatch) {
+            let m = parseInt(numericMatch[1]) - 1; // 0-indexed
+            let y = parseInt(numericMatch[2]);
+            if (y < 100) y += 2000;
+            return { year: y, month: m };
+        }
+        
+        // 3. Just year YYYY
+        const justYearMatch = str.match(/\b\d{4}\b/);
+        if (justYearMatch) {
+            return { year: parseInt(justYearMatch[0]), month: 0 };
+        }
+        
+        return { year: null, month: 0 };
+    };
+    
+    const start = parseDatePart(startStr);
+    let end = { year: 2026, month: 5 }; // default current date is June 2026
+    
+    if (endStr && endStr !== 'present' && endStr !== 'current' && endStr !== 'now') {
+        const parsedEnd = parseDatePart(endStr);
+        if (parsedEnd.year) {
+            end = parsedEnd;
+        }
+    }
+    
+    if (!start.year) {
+        return 3;
+    }
+    
+    const diffYears = end.year - start.year;
+    const diffMonths = end.month - start.month;
+    let totalMonths = (diffYears * 12) + diffMonths;
+    
+    totalMonths = Math.max(1, totalMonths + 1);
+    return totalMonths;
+}
+
 const SKILL_DICTIONARY = [
     "Python", "JavaScript", "TypeScript", "Java", "C++", "C", "C#", "Go", "Rust", "Swift", "Kotlin", "R",
     "React", "React.js", "ReactJS", "Angular", "Vue.js", "Vue", "Next.js", "Nuxt.js", "Svelte", "Redux",
@@ -127,12 +205,32 @@ function sanitizeParsedProfile(parsed, fileName) {
         });
     }
 
-    let experience = Array.isArray(parsed.experience) ? parsed.experience : [];
+    let experience = Array.isArray(parsed.experience) ? parsed.experience.map(e => {
+        if (!e || typeof e !== 'object') return null;
+        let title = (e.title || "").trim();
+        let company = (e.company || "").trim();
+        let duration = (e.duration || "").trim();
+        let duration_months = parseInt(e.duration_months);
+        if (isNaN(duration_months) || duration_months <= 0) {
+            duration_months = parseDurationMonths(duration);
+        }
+        let desc = (e.desc || "").trim();
+        let is_internship = !!e.is_internship;
+        
+        // If is_internship is not explicitly set, determine it
+        if (!is_internship) {
+            const t = `${title} ${company} ${desc}`.toLowerCase();
+            is_internship = t.includes("intern") || t.includes("trainee") || t.includes("apprentice") || t.includes("industrial training") || t.includes("co-op");
+        }
+        
+        return { title, company, duration, duration_months, desc, is_internship };
+    }).filter(Boolean) : [];
+
     let phone = (parsed.phone || "").trim();
     
     // Extract hasInternship & hasWorkExperience from parsed sub-properties if not directly set
-    let hasInternship = !!parsed.hasInternship || (parsed.internships && parsed.internships.length > 0) || (Array.isArray(experience) && experience.some(e => e.is_internship));
-    let hasWorkExperience = !!parsed.hasWorkExperience || parsed.currently_working || (Array.isArray(experience) && experience.length > 0);
+    let hasInternship = (Array.isArray(experience) && experience.some(e => e.is_internship)) || !!parsed.hasInternship || (parsed.internships && parsed.internships.length > 0);
+    let hasWorkExperience = (Array.isArray(experience) && experience.some(e => !e.is_internship)) || !!parsed.hasWorkExperience || parsed.currently_working;
     
     let atsReadiness = Math.min(100, Math.max(0, parseInt(parsed.atsReadiness) || 0));
     return { name, email, phone, linkedin, github, portfolio, certifications, skills, projects, experience, hasInternship, hasWorkExperience, atsReadiness };
@@ -694,23 +792,36 @@ export async function parseRawText(text, fileName) {
     const experience = [];
     if (sections.experience.length > 0) {
         let exp = null;
-        const dateRegex = /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}\b|\b\d{4}\s*[-–]\s*(?:\d{4}|Present|Current)\b/i;
+        const dateRangeRegex = /(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}|\d{4})\s*[-–—\u2013\u2014]\s*(?:(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}|\d{4}|Present|Current|Now)/i;
+        const dateSingleRegex = /\b(?:Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}\b|\b\d{4}\b/i;
+        
         for (const line of sections.experience) {
             const trimmed = line.trim();
-            const hasDate = dateRegex.test(trimmed);
+            const hasDate = dateRangeRegex.test(trimmed) || dateSingleRegex.test(trimmed);
             const isHeader = hasDate || (trimmed.length < 70
                 && !/^(developed|implemented|created|designed|built|worked|responsible|using|•|\-|\*)/i.test(trimmed)
                 && !trimmed.endsWith('.'));
                 
             if (isHeader && trimmed.length > 3) {
-                if (exp) experience.push(exp);
-                exp = { title: "", company: "", duration: "", desc: "" };
+                if (exp) {
+                    const t = `${exp.title} ${exp.company} ${exp.desc}`.toLowerCase();
+                    exp.is_internship = t.includes("intern") || t.includes("trainee") || t.includes("apprentice") || t.includes("industrial training") || t.includes("co-op");
+                    exp.duration_months = parseDurationMonths(exp.duration);
+                    experience.push(exp);
+                }
+                exp = { title: "", company: "", duration: "", duration_months: 0, desc: "", is_internship: false };
                 
-                // If it contains a date, extract it
-                const dm = trimmed.match(dateRegex);
-                if (dm) exp.duration = dm[0].trim();
+                // If it contains a date range, extract it, otherwise check single date
+                let dm = trimmed.match(dateRangeRegex);
+                if (dm) {
+                    exp.duration = dm[0].trim();
+                } else {
+                    dm = trimmed.match(dateSingleRegex);
+                    if (dm) exp.duration = dm[0].trim();
+                }
                 
-                const cleanHeader = trimmed.replace(dateRegex, "").replace(/^[•\-\*\s\d#]+/, "").replace(/[\(\)\[\]]/g, "").trim();
+                const matchedDate = dm ? dm[0] : "";
+                const cleanHeader = trimmed.replace(matchedDate, "").replace(/^[•\-\*\s\d#]+/, "").replace(/[\(\)\[\]]/g, "").trim();
                 const am = cleanHeader.match(/(.*?)\s+(?:at|@|,)\s+(.*)/i);
                 
                 if (am) { exp.title = am[1].trim(); exp.company = am[2].trim(); }
@@ -722,7 +833,12 @@ export async function parseRawText(text, fileName) {
                 if ((exp.desc + add + cleanDesc).length < 500) exp.desc += add + cleanDesc;
             }
         }
-        if (exp && exp.title) experience.push(exp);
+        if (exp && exp.title) {
+            const t = `${exp.title} ${exp.company} ${exp.desc}`.toLowerCase();
+            exp.is_internship = t.includes("intern") || t.includes("trainee") || t.includes("apprentice") || t.includes("industrial training") || t.includes("co-op");
+            exp.duration_months = parseDurationMonths(exp.duration);
+            experience.push(exp);
+        }
     }
 
     // --- Certifications ---
@@ -742,14 +858,8 @@ export async function parseRawText(text, fileName) {
     }
 
     // --- Internship & Work Status ---
-    const hasInternship = experience.some(e => {
-        const t = (e.title + " " + e.company + " " + e.desc).toLowerCase();
-        return t.includes("intern") || t.includes("trainee") || t.includes("apprentice") || t.includes("industrial training") || t.includes("co-op");
-    });
-    const hasWorkExperience = experience.length > 1 || experience.some(e => {
-        const t = (e.title + " " + e.company).toLowerCase();
-        return !t.includes("intern") && !t.includes("trainee") && !t.includes("apprentice") && !t.includes("industrial training") && !t.includes("co-op");
-    });
+    const hasInternship = experience.some(e => e.is_internship);
+    const hasWorkExperience = experience.some(e => !e.is_internship);
 
     // --- ATS Readiness Score ---
     let atsScore = 0;

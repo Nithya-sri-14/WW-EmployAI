@@ -269,19 +269,6 @@ function renderSnapshotStep(container) {
                     <div class="pill-container" id="certs-pill-box">
                         <!-- Certifications will be rendered here -->
                     </div>
-                </div>
-
-                <div class="form-group" style="border-top:1px solid var(--border-color); padding-top:24px; margin-top:24px;">
-                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-                        <label class="form-label" style="margin-bottom:0; font-size:1.1rem; font-weight:600; font-family:var(--font-heading);">Projects Portfolio</label>
-                        <button type="button" class="btn btn-secondary" id="btn-add-project-item" style="padding:6px 12px; font-size:0.85rem; height:auto; display:flex; align-items:center; gap:4px;">
-                            <i data-lucide="plus" style="width:14px; height:14px;"></i> Add Project
-                        </button>
-                    </div>
-                    <div id="projects-list-container" style="display:flex; flex-direction:column; gap:12px;">
-                        <!-- Projects rendered dynamically -->
-                    </div>
-                </div>
 
                 <!-- Program Selection Section -->
                 <div class="program-selection-container" style="border-top:1px solid var(--border-color); padding-top:24px; margin-top: 24px; width:100%;">
@@ -358,114 +345,10 @@ function renderSnapshotStep(container) {
 
     renderCerts();
 
-    // Render projects list
-    const renderProjects = () => {
-        const projContainer = document.getElementById('projects-list-container');
-        if (!projContainer) return;
-        
-        projContainer.innerHTML = '';
-        const projs = activeCandidate.projects || [];
-        
-        if (projs.length === 0) {
-            projContainer.innerHTML = `
-                <div style="text-align:center; padding:20px; border:1px dashed var(--border-color); border-radius:8px; color:var(--text-muted); font-size:0.85rem;">
-                    No projects listed. Click "Add Project" to add one.
-                </div>
-            `;
-            return;
-        }
-
-        projs.forEach((proj, idx) => {
-            const card = document.createElement('div');
-            card.className = 'glass-card project-edit-card';
-            card.style.padding = '16px';
-            card.style.position = 'relative';
-            card.style.border = '1px solid var(--border-color)';
-            card.style.background = 'rgba(255, 255, 255, 0.01)';
-            card.style.borderRadius = '8px';
-            card.style.marginBottom = '12px';
-            
-            card.innerHTML = `
-                <button type="button" class="btn-delete-proj" data-idx="${idx}" style="position:absolute; right:16px; top:16px; background:none; border:none; color:var(--accent-red); cursor:pointer; padding:4px;">
-                    <i data-lucide="trash-2" style="width:16px; height:16px; color:#ef4444;"></i>
-                </button>
-                <div class="form-row" style="margin-bottom:12px; display:flex; gap:16px;">
-                    <div class="form-group" style="margin-bottom:0; flex:1;">
-                        <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Project Title</label>
-                        <input type="text" class="form-input proj-title" data-idx="${idx}" value="${proj.title || ''}" placeholder="e.g. E-Commerce Platform" style="padding-left:12px; font-size:0.85rem; height:36px;">
-                    </div>
-                    <div class="form-group" style="margin-bottom:0; flex:1;">
-                        <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Tech Stack (comma separated)</label>
-                        <input type="text" class="form-input proj-tech" data-idx="${idx}" value="${proj.tech || ''}" placeholder="e.g. React, Node.js, MongoDB" style="padding-left:12px; font-size:0.85rem; height:36px;">
-                    </div>
-                </div>
-                <div class="form-row" style="margin-bottom:12px;">
-                    <div class="form-group" style="margin-bottom:0; flex:1;">
-                        <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Project URL / Repo URL</label>
-                        <input type="text" class="form-input proj-url" data-idx="${idx}" value="${proj.url || ''}" placeholder="e.g. https://github.com/username/project" style="padding-left:12px; font-size:0.85rem; height:36px;">
-                    </div>
-                </div>
-                <div class="form-group" style="margin-bottom:0;">
-                    <label class="form-label" style="font-size:0.8rem; margin-bottom:4px;">Description</label>
-                    <textarea class="form-input proj-desc" data-idx="${idx}" style="padding:8px 12px; font-size:0.85rem; height:60px; resize:vertical; line-height:1.4;" placeholder="Describe what you built and your achievements...">${proj.desc || ''}</textarea>
-                </div>
-            `;
-            projContainer.appendChild(card);
-        });
-
-        if (window.lucide) window.lucide.createIcons();
-
-        // Bind delete events
-        projContainer.querySelectorAll('.btn-delete-proj').forEach(btn => {
-            btn.addEventListener('click', () => {
-                saveProjFromUI();
-                const idx = parseInt(btn.getAttribute('data-idx'));
-                activeCandidate.projects.splice(idx, 1);
-                renderProjects();
-                
-                const projCountInput = document.getElementById('edit-projects-count');
-                if (projCountInput) projCountInput.value = activeCandidate.projects.length;
-            });
-        });
-    };
-
-    const saveProjFromUI = () => {
-        const titles = document.querySelectorAll('.proj-title');
-        const techs = document.querySelectorAll('.proj-tech');
-        const urls = document.querySelectorAll('.proj-url');
-        const descs = document.querySelectorAll('.proj-desc');
-        
-        activeCandidate.projects = Array.from(titles).map((titleEl, idx) => {
-            return {
-                title: titleEl.value.trim(),
-                tech: (techs[idx] ? techs[idx].value.trim() : ""),
-                url: (urls[idx] ? urls[idx].value.trim() : ""),
-                desc: (descs[idx] ? descs[idx].value.trim() : "")
-            };
-        });
-    };
-
-    renderProjects();
-
-    // Bind add project button
-    document.getElementById('btn-add-project-item').addEventListener('click', () => {
-        saveProjFromUI();
-        activeCandidate.projects.push({
-            title: '',
-            desc: '',
-            tech: '',
-            url: ''
-        });
-        renderProjects();
-        const projCountInput = document.getElementById('edit-projects-count');
-        if (projCountInput) projCountInput.value = activeCandidate.projects.length;
-    });
-
     // Sync from Project Count input
     const projCountInput = document.getElementById('edit-projects-count');
     if (projCountInput) {
         projCountInput.addEventListener('change', () => {
-            saveProjFromUI();
             const count = parseInt(projCountInput.value) || 0;
             let currentProj = activeCandidate.projects || [];
             
@@ -482,7 +365,6 @@ function renderSnapshotStep(container) {
                 currentProj = currentProj.slice(0, count);
             }
             activeCandidate.projects = currentProj;
-            renderProjects();
         });
     }
 
@@ -638,9 +520,6 @@ function renderSnapshotStep(container) {
 
     // Submit button bindings
     document.getElementById('btn-run-analysis').addEventListener('click', () => {
-        // Collect edited list values first
-        saveProjFromUI();
-
         // Collect edited values
         activeCandidate.name = document.getElementById('edit-name').value;
         activeCandidate.email = document.getElementById('edit-email').value;
