@@ -105,34 +105,40 @@ const SKILL_DICTIONARY = [
 
 const PROJECT_FEATURE_MAP = [
     {
-        key: /rag[ -_]career[ -_]chatbot/i,
+        key: /rag[ -_]?career[ -_]?chatbot|career[ -_]?chatbot/i,
         title: "RAG Career Chatbot",
-        desc: "An end-to-end AI-driven Resume–Job Matching & IT Career Guidance Platform that helps job seekers analyze their resumes, discover suitable IT job roles, and get instant career-related answers using NLP, Semantic Search, and RAG-based Chatbots."
+        desc: "An end-to-end AI-driven Resume–Job Matching & IT Career Guidance Platform that helps job seekers analyze their resumes, discover suitable IT job roles, and get instant career-related answers using NLP, Semantic Search, and RAG-based Chatbots.",
+        tech: "Python, RAG, NLP, Semantic Search, LangChain, FAISS"
     },
     {
-        key: /ai[ -_]document[ -_]search|document[ -_]search[ -_]&[ -_]chat/i,
+        key: /ai[ -_]?document[ -_]?search|document[ -_]?search[ -_]?(?:&|and)[ -_]?chat|pdf[ -_]?search[ -_]?(?:&|and)[ -_]?chat/i,
         title: "AI Document Search & Chat Application",
-        desc: "An AI-powered web application that allows users to upload PDF documents and ask questions about their content using local Large Language Models (LLMs) via Ollama. The system uses FastAPI for the backend, React for the frontend, and vector search (FAISS + embeddings) to generate accurate, context-aware answers using RAG (Retrieval Augmented Generation)."
+        desc: "An AI-powered web application that allows users to upload PDF documents and ask questions about their content using local Large Language Models (LLMs) via Ollama. The system uses FastAPI for the backend, React for the frontend, and vector search (FAISS + embeddings) to generate accurate, context-aware answers using RAG (Retrieval Augmented Generation).",
+        tech: "Python, FastAPI, React, Ollama, LLMs, FAISS, RAG"
     },
     {
-        key: /email[ -_]spam[ -_]detection[ -_]agent/i,
+        key: /email[ -_]?spam|spam[ -_]?detection/i,
         title: "Email_Spam_detection_agent",
-        desc: "Built an AI-based email classification system using Machine Learning and Natural Language Processing to detect spam messages. Implemented text preprocessing and model training to improve accuracy, helping enhance inbox security and user productivity."
+        desc: "Built an AI-based email classification system using Machine Learning and Natural Language Processing to detect spam messages. Implemented text preprocessing and model training to improve accuracy, helping enhance inbox security and user productivity.",
+        tech: "Python, Machine Learning, NLP, Scikit-Learn"
     },
     {
-        key: /ai[ -_]educational[ -_]content[ -_]generator/i,
+        key: /ai[ -_]?educational[ -_]?content|educational[ -_]?content[ -_]?generator/i,
         title: "AI-Educational-Content-Generator",
-        desc: "Built an AI-based application that generates personalized educational content using NLP and generative AI. Automated creation of study materials such as notes and questions, helping reduce manual effort and enhance learning experiences."
+        desc: "Built an AI-based application that generates personalized educational content using NLP and generative AI. Automated creation of study materials such as notes and questions, helping reduce manual effort and enhance learning experiences.",
+        tech: "Python, Generative AI, NLP, Text Generation"
     },
     {
-        key: /campus[ -_]placement[ -_]analytics/i,
+        key: /campus[ -_]?placement|placement[ -_]?analytics/i,
         title: "Campus Placement Analytics",
-        desc: "Developed a data analytics project to study campus placement records, visualize key trends, and generate insights on student performance and recruitment outcomes using data analysis techniques."
+        desc: "Developed a data analytics project to study campus placement records, visualize key trends, and generate insights on student performance and recruitment outcomes using data analysis techniques.",
+        tech: "Python, Data Analysis, Data Visualization, Pandas, Matplotlib, Seaborn"
     },
     {
-        key: /ai[ -_]resume[ -_]matcher/i,
+        key: /ai[ -_]?resume[ -_]?matcher|resume[ -_]?matcher/i,
         title: "AI-Resume-Matcher",
-        desc: "Developed an AI application using NLP to analyze resumes and job descriptions and calculate a match percentage, helping users quickly assess candidate suitability for specific roles."
+        desc: "Developed an AI application using NLP to analyze resumes and job descriptions and calculate a match percentage, helping users quickly assess candidate suitability for specific roles.",
+        tech: "Python, NLP, Text Matching, Scikit-Learn"
     }
 ];
 
@@ -324,6 +330,9 @@ function sanitizeParsedProfile(parsed, fileName) {
             if (mapped) {
                 proj.title = mapped.title;
                 proj.desc = mapped.desc;
+                if (mapped.tech) {
+                    proj.tech = mapped.tech;
+                }
             }
         });
         
