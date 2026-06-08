@@ -169,6 +169,14 @@ function renderSnapshotStep(container) {
     const filled = fields.filter(Boolean).length;
     const completeness = activeCandidate.resume_completeness ? Math.round(activeCandidate.resume_completeness) : Math.round((filled / fields.length) * 100);
 
+    const expMonths = (activeCandidate.experience || [])
+        .filter(e => !e.is_internship)
+        .reduce((sum, e) => sum + (parseInt(e.duration_months) || 0), 0);
+
+    const internMonths = (activeCandidate.experience || [])
+        .filter(e => e.is_internship)
+        .reduce((sum, e) => sum + (parseInt(e.duration_months) || 0), 0);
+
     container.innerHTML = `
         <div style="max-width: 900px; margin: 0 auto;">
             <!-- Center Edit Form & Program Choice -->
@@ -202,10 +210,42 @@ function renderSnapshotStep(container) {
                     </div>
                 </div>
 
-                <div class="form-row" style="margin-bottom:16px;">
-                    <div class="form-group">
+                <div class="form-row" style="gap:24px; margin-bottom:16px;">
+                    <div class="form-group" style="flex:1;">
+                        <label class="form-label" for="edit-workstatus">Work Experience Status</label>
+                        <select id="edit-workstatus" class="form-input" style="padding:8px 16px; height:40px;">
+                            <option value="true" ${activeCandidate.hasWorkExperience ? 'selected' : ''}>Has Work Experience (Yes)</option>
+                            <option value="false" ${!activeCandidate.hasWorkExperience ? 'selected' : ''}>No Work Experience (No)</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex:1;">
+                        <label class="form-label" for="edit-experience-months">Work Experience (Months)</label>
+                        <input type="number" id="edit-experience-months" class="form-input" value="${expMonths}" min="0" max="120" style="padding-left:16px; height:40px;">
+                    </div>
+                </div>
+
+                <div class="form-row" style="gap:24px; margin-bottom:16px;">
+                    <div class="form-group" style="flex:1;">
+                        <label class="form-label" for="edit-internship">Internship Status</label>
+                        <select id="edit-internship" class="form-input" style="padding:8px 16px; height:40px;">
+                            <option value="true" ${activeCandidate.hasInternship ? 'selected' : ''}>Has Internship (Yes)</option>
+                            <option value="false" ${!activeCandidate.hasInternship ? 'selected' : ''}>No Internship (No)</option>
+                        </select>
+                    </div>
+                    <div class="form-group" style="flex:1;">
+                        <label class="form-label" for="edit-internship-months">Internship Duration (Months)</label>
+                        <input type="number" id="edit-internship-months" class="form-input" value="${internMonths}" min="0" max="60" style="padding-left:16px; height:40px;">
+                    </div>
+                </div>
+
+                <div class="form-row" style="gap:24px; margin-bottom:16px;">
+                    <div class="form-group" style="flex:1;">
                         <label class="form-label" for="edit-projects-count">Projects Count</label>
                         <input type="number" id="edit-projects-count" class="form-input" value="${(activeCandidate.projects || []).length}" min="0" max="10" style="padding-left:16px; height:40px;">
+                    </div>
+                    <div class="form-group" style="flex:1;">
+                        <label class="form-label" for="edit-ats-score">ATS Resume Score (%)</label>
+                        <input type="number" id="edit-ats-score" class="form-input" value="${activeCandidate.atsReadiness ?? 40}" min="0" max="100" style="padding-left:16px; height:40px;">
                     </div>
                 </div>
 
@@ -340,6 +380,72 @@ function renderSnapshotStep(container) {
         }
     });
 
+    // Select elements
+    const workStatusSelect = document.getElementById('edit-workstatus');
+    const expMonthsInput = document.getElementById('edit-experience-months');
+    const internshipSelect = document.getElementById('edit-internship');
+    const internMonthsInput = document.getElementById('edit-internship-months');
+
+    // Experience Sync
+    if (workStatusSelect && expMonthsInput) {
+        if (workStatusSelect.value === 'false') {
+            expMonthsInput.value = 0;
+            expMonthsInput.disabled = true;
+        }
+
+        workStatusSelect.addEventListener('change', () => {
+            if (workStatusSelect.value === 'false') {
+                expMonthsInput.value = 0;
+                expMonthsInput.disabled = true;
+            } else {
+                expMonthsInput.disabled = false;
+                if (parseInt(expMonthsInput.value) <= 0) {
+                    expMonthsInput.value = 6; // default fallback
+                }
+            }
+        });
+
+        expMonthsInput.addEventListener('input', () => {
+            const val = parseInt(expMonthsInput.value) || 0;
+            if (val > 0) {
+                workStatusSelect.value = 'true';
+            } else {
+                workStatusSelect.value = 'false';
+                expMonthsInput.disabled = true;
+            }
+        });
+    }
+
+    // Internship Sync
+    if (internshipSelect && internMonthsInput) {
+        if (internshipSelect.value === 'false') {
+            internMonthsInput.value = 0;
+            internMonthsInput.disabled = true;
+        }
+
+        internshipSelect.addEventListener('change', () => {
+            if (internshipSelect.value === 'false') {
+                internMonthsInput.value = 0;
+                internMonthsInput.disabled = true;
+            } else {
+                internMonthsInput.disabled = false;
+                if (parseInt(internMonthsInput.value) <= 0) {
+                    internMonthsInput.value = 3; // default fallback
+                }
+            }
+        });
+
+        internMonthsInput.addEventListener('input', () => {
+            const val = parseInt(internMonthsInput.value) || 0;
+            if (val > 0) {
+                internshipSelect.value = 'true';
+            } else {
+                internshipSelect.value = 'false';
+                internMonthsInput.disabled = true;
+            }
+        });
+    }
+
     // Program selection bindings
     const allPrograms = getStorageItem('wrenchwise_programs', []);
     // Hide disabled or incomplete programs (missing skills, projects, or certs) to prevent hallucinations
@@ -398,7 +504,66 @@ function renderSnapshotStep(container) {
         activeCandidate.linkedin = document.getElementById('edit-linkedin').value;
         activeCandidate.github = document.getElementById('edit-github').value;
         
+        const hasWork = document.getElementById('edit-workstatus').value === 'true';
+        const expMonths = parseInt(document.getElementById('edit-experience-months').value) || 0;
+        const hasIntern = document.getElementById('edit-internship').value === 'true';
+        const internMonths = parseInt(document.getElementById('edit-internship-months').value) || 0;
+        const atsScore = parseInt(document.getElementById('edit-ats-score').value) || 0;
         const projCount = parseInt(document.getElementById('edit-projects-count').value) || 0;
+
+        activeCandidate.hasWorkExperience = hasWork;
+        activeCandidate.hasInternship = hasIntern;
+        activeCandidate.atsReadiness = atsScore;
+
+        // Reconstruct experience array
+        let currentExp = activeCandidate.experience || [];
+        
+        if (!hasWork) {
+            currentExp = currentExp.filter(e => e.is_internship);
+        } else {
+            const workItems = currentExp.filter(e => !e.is_internship);
+            if (workItems.length === 0) {
+                currentExp.push({
+                    title: 'Software Engineer',
+                    company: 'Technology Solutions',
+                    duration: `${expMonths} Months`,
+                    duration_months: expMonths,
+                    desc: 'Developed features and wrote tests.',
+                    is_internship: false
+                });
+            } else {
+                workItems[0].duration_months = expMonths;
+                workItems[0].duration = `${expMonths} Months`;
+                for (let i = 1; i < workItems.length; i++) {
+                    workItems[i].duration_months = 0;
+                    workItems[i].duration = '0 Months';
+                }
+            }
+        }
+
+        if (!hasIntern) {
+            currentExp = currentExp.filter(e => !e.is_internship);
+        } else {
+            const internItems = currentExp.filter(e => e.is_internship);
+            if (internItems.length === 0) {
+                currentExp.push({
+                    title: 'Software Engineer Intern',
+                    company: 'Technology Solutions',
+                    duration: `${internMonths} Months`,
+                    duration_months: internMonths,
+                    desc: 'Collaborated on feature developments and bugs.',
+                    is_internship: true
+                });
+            } else {
+                internItems[0].duration_months = internMonths;
+                internItems[0].duration = `${internMonths} Months`;
+                for (let i = 1; i < internItems.length; i++) {
+                    internItems[i].duration_months = 0;
+                    internItems[i].duration = '0 Months';
+                }
+            }
+        }
+        activeCandidate.experience = currentExp;
 
         // Adjust projects array to match projCount
         let currentProj = activeCandidate.projects || [];
